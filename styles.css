@@ -1,0 +1,645 @@
+/* Fonts: System stack for CSP compliance */
+:host {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --primary-color: #8A2BE2;
+  --primary-dark: #4B0082;
+  --accent-color: #00F2FF;
+  --bg-dark: #0F0F1A;
+  --glass-bg: rgba(15, 15, 26, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-main: #E0E0E0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar Futurista */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 3px;
+}
+
+#maria-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 380px;
+  height: calc(100vh - 40px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  /* Inner delicately stroke */
+  border-radius: 20px;
+  display: flex;
+  overflow: hidden;
+  color: var(--text-main);
+  opacity: 0;
+  transform: translateX(50px) scale(0.95);
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+  pointer-events: none;
+  font-family: 'Inter', sans-serif;
+  z-index: 2147483647;
+}
+
+#maria-overlay.visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Sidebar para Shortcuts - Glassmorphism */
+.sidebar {
+  width: 64px;
+  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
+  gap: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.shortcut {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  filter: grayscale(100%) opacity(0.7);
+  /* Monochromatic by default */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.shortcut:hover {
+  transform: scale(1.1);
+  filter: grayscale(0%) opacity(1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+}
+
+/* Contenido Principal */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+}
+
+/* Header Hero Cyberpunk Style */
+.hero-header {
+  height: 120px;
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.15), rgba(0, 242, 255, 0.05));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.hero-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-color);
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+  margin-bottom: 8px;
+  background: #000;
+  position: relative;
+}
+
+/* Loading Ring Animation for Avatar */
+.hero-avatar.loading::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-color);
+  border-right-color: var(--primary-color);
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.hero-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-info {
+  text-align: center;
+}
+
+.hero-info h2 {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);
+}
+
+.status-badge {
+  font-size: 9px;
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+/* Buttons Top Right */
+.window-ctrl-btn {
+  position: absolute;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.window-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.window-ctrl-btn img {
+  width: 14px;
+  height: 14px;
+  display: block;
+  opacity: 0.8;
+}
+
+#close-btn {
+  right: 10px;
+}
+
+#close-btn:hover {
+  background: rgba(255, 50, 50, 0.3);
+  border-color: rgba(255, 50, 50, 0.5);
+}
+
+#minimize-btn {
+  right: 44px;
+}
+
+/* Chat Area Refinements */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Message Styles */
+.message {
+  display: flex;
+  max-width: 100%;
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.model {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-wrap: break-word;
+  /* Prevent text overflow */
+  word-break: break-word;
+  /* Ensure long words break */
+  min-width: 0;
+  /* Allow flex item to shrink properly */
+}
+
+.message.user .bubble {
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(106, 13, 173, 0.8));
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+  border-color: rgba(138, 43, 226, 0.5);
+}
+
+.message.model .bubble {
+  background: rgba(30, 30, 40, 0.8);
+  color: #eee;
+  border-bottom-left-radius: 4px;
+  border-left: 2px solid var(--accent-color);
+  /* Tech accent */
+}
+
+.bubble.error {
+  background: rgba(207, 102, 121, 0.1);
+  border: 1px solid rgba(207, 102, 121, 0.5);
+  color: #ff6b6b;
+}
+
+/* Inline code */
+.bubble code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--accent-color);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* Code Blocks & Wrappers */
+.code-wrapper {
+  margin: 10px 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  /* Ensure header radius is respected */
+  max-width: 100%;
+}
+
+.bubble pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  /* Allow code to scroll horizontally */
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: #dcdcdc;
+  line-height: 1.5;
+  white-space: pre;
+  /* Maintain formatting but allow scroll */
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-color) rgba(0, 0, 0, 0.3);
+}
+
+.bubble pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.bubble pre::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 3px;
+}
+
+/* Ensure images don't overflow */
+.bubble img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.bubble b {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Input Area Redesign */
+.input-area {
+  padding: 15px;
+  background: rgba(10, 10, 15, 0.6);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  backdrop-filter: blur(20px);
+}
+
+.input-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-btn,
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  /* Slightly squarer for tech look */
+  transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-btn:hover,
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent-color);
+}
+
+.tool-btn svg,
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Mic Button with Pulse */
+.mic-btn-large {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(138, 43, 226, 0.1);
+  border: 1px solid rgba(138, 43, 226, 0.4);
+  color: var(--primary-color);
+  margin-left: auto;
+  transition: all 0.3s;
+}
+
+.mic-btn-large:hover {
+  background: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 0 15px var(--primary-color);
+}
+
+.mic-btn-large.recording {
+  background: #ff0055;
+  border-color: #ff0055;
+  color: white;
+  animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 85, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 85, 0);
+  }
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px;
+  transition: border-color 0.2s;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.1);
+}
+
+#prompt-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  line-height: 1.5;
+  padding: 4px 6px;
+  max-height: 120px;
+}
+
+#prompt-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.icon-btn.primary {
+  color: var(--primary-color);
+  background: rgba(138, 43, 226, 0.1);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.icon-btn.primary:hover {
+  background: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+}
+
+/* Hide other internal elements when minimized */
+#maria-overlay.minimized .hero-info,
+#maria-overlay.minimized .window-ctrl-btn,
+#maria-overlay.minimized .chat-area,
+#maria-overlay.minimized .input-area,
+#maria-overlay.minimized .sidebar {
+  display: none !important;
+}
+
+/* Minimized State - The Floating Orb */
+#maria-overlay.minimized {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  overflow: visible;
+  padding: 0;
+  cursor: pointer;
+}
+
+#maria-overlay.minimized .hero-header {
+  height: 100%;
+  width: 100%;
+  border-radius: 50%;
+  /* Subtle border and glass effect */
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: radial-gradient(circle at 30% 30%, var(--primary-color), var(--bg-dark));
+  /* Moved gradient here */
+  padding: 0;
+  box-shadow: 0 0 25px rgba(138, 43, 226, 0.5);
+  transition: transform 0.3s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#maria-overlay.minimized:hover .hero-header {
+  transform: scale(1.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 35px rgba(0, 242, 255, 0.6);
+}
+
+#maria-overlay.minimized .hero-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  margin: 0;
+  padding: 10px;
+  /* Add padding so the image sits nicely inside the orb */
+  position: relative;
+  z-index: 20;
+  /* Ensure image is on top */
+}
+
+#maria-overlay.minimized .hero-avatar::after {
+  display: none;
+  /* Remove loading spinner in minimized mode if it interferes */
+}
+
+#maria-overlay.minimized .hero-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Removed the ::after pseudo-element that was blocking the view */
+
+
+/* Speak Button in Message */
+.msg-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 4px;
+  padding-left: 5px;
+}
+
+.speak-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.speak-btn:hover {
+  color: var(--accent-color);
+  background: rgba(0, 242, 255, 0.1);
+}
+
+.speak-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* Copy Code Button */
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  font-size: 11px;
+  color: #bbb;
+  margin-bottom: -10px;
+  /* Pull code block up */
+  position: relative;
+  z-index: 1;
+}
+
+.copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 6px;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent-color);
+}
+
+/* Dragging State - Prevent iframe interaction */
+body.maria-dragging * {
+  pointer-events: none !important;
+}
+
+body.maria-dragging #maria-overlay {
+  pointer-events: auto !important;
+}

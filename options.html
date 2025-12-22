@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración de Maria AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #8A2BE2;
+            --accent-color: #00F2FF;
+            --bg-color: #0F0F1A;
+            --glass-bg: rgba(20, 20, 30, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #E0E0E0;
+            --text-muted: #8888AA;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.1) 0%, transparent 40%);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 0;
+            border-radius: 20px;
+            box-shadow:
+                0 0 40px rgba(138, 43, 226, 0.2),
+                inset 0 0 0 1px var(--glass-border);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Hero Header */
+        .hero-header {
+            height: 140px;
+            background: linear-gradient(180deg, rgba(138, 43, 226, 0.2) 0%, rgba(15, 15, 26, 0) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .hero-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            margin-bottom: 10px;
+            background: #000;
+            position: relative;
+        }
+
+        .hero-avatar::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--primary-color);
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hero-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hero-title {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+        }
+
+        .content-body {
+            padding: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 2rem;
+            text-align: left;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.8rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 0;
+            border: none;
+            border-bottom: 2px solid #333;
+            background: transparent;
+            color: #fff;
+            font-family: 'Inter', monospace;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+            padding-right: 35px;
+            /* Space for eye icon */
+        }
+
+        input:focus {
+            border-bottom-color: var(--accent-color);
+            box-shadow: 0 4px 10px -4px rgba(0, 242, 255, 0.3);
+        }
+
+        .toggle-visibility {
+            position: absolute;
+            right: 0;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .toggle-visibility:hover {
+            color: var(--accent-color);
+        }
+
+        button.save-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, var(--primary-color), #6A0DAD);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
+        }
+
+        button.save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(138, 43, 226, 0.6);
+            letter-spacing: 3px;
+        }
+
+        button.save-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        button.save-btn:hover::before {
+            left: 100%;
+        }
+
+        #status {
+            margin-top: 1.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            min-height: 1.5em;
+            letter-spacing: 0.5px;
+        }
+
+        .note {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="hero-header">
+            <div class="hero-avatar">
+                <img src="assets/icon.png" alt="Maria AI">
+            </div>
+            <h1 class="hero-title">Maria AI</h1>
+        </div>
+
+        <div class="content-body">
+            <div class="input-group">
+                <label for="apiKey">DeepSeek API Key</label>
+                <div class="input-wrapper">
+                    <input type="password" id="apiKey" placeholder="sk-..." spellcheck="false">
+                    <button class="toggle-visibility" id="toggleApiVisibility" title="Mostrar/Ocultar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Vision Providers -->
+            <label style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
+                Visión (Opcional)
+            </label>
+
+            <div class="input-group">
+                <label for="openaiKey">OpenAI Key (GPT-4o)</label>
+                <div class="input-wrapper">
+                    <input type="password" id="openaiKey" placeholder="sk-..." spellcheck="false">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="googleKey">Google Gemini Key</label>
+                <div class="input-wrapper">
+                    <input type="password" id="googleKey" placeholder="AIza..." spellcheck="false">
+                </div>
+            </div>
+            <button id="saveBtn" class="save-btn">Guardar</button>
+            <div id="status"></div>
+            <div class="note">
+                Tu clave se almacena de forma segura en tu navegador.
+                <br>Consíguela en <a href="https://platform.deepseek.com" target="_blank"
+                    style="color: var(--accent-color); text-decoration: none;">platform.deepseek.com</a>
+            </div>
+        </div>
+    </div>
+    <script src="options.js"></script>
+</body>
+
+</html>
