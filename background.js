@@ -382,7 +382,7 @@ async function fetchOpenAIVision(apiKey, base64Image) {
 }
 
 async function fetchGeminiVision(apiKey, base64Image) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${apiKey}`; // Updated Model
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Updated Model
     const payload = {
         contents: [{
             parts: [
