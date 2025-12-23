@@ -520,6 +520,25 @@
                     wrapper.appendChild(header);
                     wrapper.appendChild(pre);
                 });
+
+                // NUEVO: Agregar botón de altavoz al mensaje de streaming finalizado
+                const actions = document.createElement('div');
+                actions.className = 'msg-actions';
+
+                const btn = document.createElement('button');
+                btn.innerHTML = ICONS.speaker;
+                btn.className = 'speak-btn';
+                btn.title = 'Escuchar';
+                // CORREGIDO: Guardar referencia al mensaje antes de que se limpie
+                const messageElement = currentStreamMsg; // Capturar referencia
+                btn.onclick = () => {
+                    const bubble = messageElement.querySelector('.bubble');
+                    const cleanText = bubble ? bubble.textContent : '';
+                    speakMessage(cleanText);
+                };
+
+                actions.appendChild(btn);
+                currentStreamMsg.appendChild(actions);
             }
             currentStreamMsg = null;
             currentStreamText = "";
@@ -580,7 +599,12 @@
             btn.innerHTML = ICONS.speaker;
             btn.className = 'speak-btn';
             btn.title = 'Escuchar';
-            btn.onclick = () => speakMessage(text);
+            // CORREGIDO: Extraer texto limpio del bubble en lugar de usar la variable text
+            btn.onclick = () => {
+                const bubble = msg.querySelector('.bubble');
+                const cleanText = bubble ? bubble.textContent : text;
+                speakMessage(cleanText);
+            };
 
             actions.appendChild(btn);
             msg.appendChild(actions);
@@ -590,17 +614,102 @@
         feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
     }
 
-    function speakMessage(text) {
+    async function speakMessage(text) {
+        // Cancelar cualquier audio anterior
         if (synthesis.speaking) {
             synthesis.cancel();
         }
-        const cleanText = text.replace(/[*`_]/g, '');
+
+        // Limpiar texto de markdown y HTML de forma más agresiva
+        let cleanText = text;
+
+        // Crear un elemento temporal para extraer solo el texto sin HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text;
+        cleanText = tempDiv.textContent || tempDiv.innerText || text;
+
+        // Limpiar markdown y caracteres especiales
+        cleanText = cleanText
+            .replace(/[*`_#~\[\]]/g, '') // Eliminar markdown
+            .replace(/\n{2,}/g, '. ') // Múltiples saltos de línea a punto
+            .replace(/\n/g, ' ') // Saltos de línea simples a espacio
+            .trim();
+
+        console.log('Texto limpio para TTS:', cleanText); // Debug
+
+        // Obtener configuración
+        const keys = await chrome.storage.sync.get(['elevenLabsKey', 'elevenLabsVoiceId']);
+
+        // 1. INTENTO CON ELEVENLABS (Voz Anime Real)
+        if (keys.elevenLabsKey && keys.elevenLabsVoiceId) {
+            const statusBadge = shadowRoot?.querySelector('#status-badge');
+            if (statusBadge) statusBadge.textContent = "HABLANDO...";
+
+            try {
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${keys.elevenLabsVoiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': keys.elevenLabsKey
+                    },
+                    body: JSON.stringify({
+                        text: cleanText,
+                        model_id: "eleven_multilingual_v2", // Mejor para español
+                        voice_settings: {
+                            stability: 0.5,
+                            similarity_boost: 0.75,
+                            style: 0.5 // Exageración (bueno para anime)
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('ElevenLabs Error:', errorText);
+                    throw new Error('ElevenLabs API Error');
+                }
+
+                const blob = await response.blob();
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+
+                audio.onended = () => {
+                    if (statusBadge) statusBadge.textContent = "ONLINE";
+                    URL.revokeObjectURL(audioUrl); // Liberar memoria
+                };
+
+                audio.onerror = (e) => {
+                    console.error('Error reproduciendo audio:', e);
+                    if (statusBadge) statusBadge.textContent = "ONLINE";
+                };
+
+                await audio.play();
+                return; // Salir si funcionó ElevenLabs
+
+            } catch (e) {
+                console.error("Fallo ElevenLabs, usando fallback:", e);
+                const statusBadge = shadowRoot?.querySelector('#status-badge');
+                if (statusBadge) statusBadge.textContent = "ONLINE";
+                // Si falla, continuamos al código de abajo (Nativo)
+            }
+        }
+
+        // 2. FALLBACK: NAVEGADOR NATIVO (Simulación Anime)
         const utterance = new SpeechSynthesisUtterance(cleanText);
         const voices = synthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Helena')));
+
+        // Buscamos voces femeninas en español
+        const preferredVoice = voices.find(v =>
+            v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Helena') || v.name.includes('Monica'))
+        );
+
         if (preferredVoice) utterance.voice = preferredVoice;
-        utterance.pitch = 1.2;
-        utterance.rate = 1.1;
+
+        // TRUCO: Pitch alto y velocidad rápida simulan voz de anime/loli
+        utterance.pitch = 1.6; // Rango normal es 0-2. 1.6 es bastante agudo.
+        utterance.rate = 1.15; // Un poco más rápido
+
         synthesis.speak(utterance);
     }
 

@@ -26,6 +26,10 @@ function saveOptions() {
   const openaiKey = document.getElementById('openaiKey').value;
   const googleKey = document.getElementById('googleKey').value;
 
+  // NUEVO: Capturar valores de ElevenLabs
+  const elevenKey = document.getElementById('elevenKey').value;
+  const elevenVoice = document.getElementById('elevenVoice').value;
+
   if (!apiKey) {
     showStatus('Por favor, ingresa una clave de DeepSeek principal.', 'error');
     return;
@@ -34,14 +38,20 @@ function saveOptions() {
   chrome.storage.sync.set({
     deepseekApiKey: apiKey,
     openaiApiKey: openaiKey,
-    googleApiKey: googleKey
+    googleApiKey: googleKey,
+    // NUEVO: Guardar en storage
+    elevenLabsKey: elevenKey,
+    elevenLabsVoiceId: elevenVoice
   }, () => {
     showStatus('Guardado correctamente.', 'success');
   });
 }
 
 function restoreOptions() {
-  chrome.storage.sync.get(['deepseekApiKey', 'openaiApiKey', 'googleApiKey'], (items) => {
+  chrome.storage.sync.get([
+    'deepseekApiKey', 'openaiApiKey', 'googleApiKey',
+    'elevenLabsKey', 'elevenLabsVoiceId' // NUEVO
+  ], (items) => {
     if (items.deepseekApiKey) {
       document.getElementById('apiKey').value = items.deepseekApiKey;
     }
@@ -50,6 +60,14 @@ function restoreOptions() {
     }
     if (items.googleApiKey) {
       document.getElementById('googleKey').value = items.googleApiKey;
+    }
+
+    // NUEVO: Restaurar valores de ElevenLabs
+    if (items.elevenLabsKey) {
+      document.getElementById('elevenKey').value = items.elevenLabsKey;
+    }
+    if (items.elevenLabsVoiceId) {
+      document.getElementById('elevenVoice').value = items.elevenLabsVoiceId;
     }
   });
 }

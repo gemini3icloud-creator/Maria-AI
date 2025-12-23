@@ -106,26 +106,28 @@
 
 /* Header Hero Cyberpunk Style */
 .hero-header {
-  height: 120px;
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.15), rgba(0, 242, 255, 0.05));
+  height: 80px;
+  background: linear-gradient(135deg, rgba(75, 0, 130, 0.2), rgba(138, 43, 226, 0.1));
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 0 20px;
   position: relative;
   border-bottom: 1px solid var(--glass-border);
+  gap: 12px;
 }
 
 .hero-avatar {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: 2px solid var(--accent-color);
   overflow: hidden;
   box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
-  margin-bottom: 8px;
   background: #000;
   position: relative;
+  flex-shrink: 0;
 }
 
 /* Loading Ring Animation for Avatar */
@@ -160,13 +162,16 @@
 }
 
 .hero-info {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .hero-info h2 {
   margin: 0;
   font-family: 'Orbitron', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   color: #fff;
   font-weight: 700;
   letter-spacing: 1px;
@@ -175,15 +180,14 @@
 
 .status-badge {
   font-size: 9px;
-  background: rgba(0, 255, 136, 0.1);
+  background: rgba(0, 255, 136, 0.15);
   color: #00ff88;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
   font-weight: bold;
   text-transform: uppercase;
-  border: 1px solid rgba(0, 255, 136, 0.3);
+  border: 1px solid rgba(0, 255, 136, 0.4);
   letter-spacing: 0.5px;
-  margin-top: 4px;
   display: inline-block;
 }
 
@@ -286,19 +290,22 @@
 }
 
 .message.user .bubble {
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.8), rgba(106, 13, 173, 0.8));
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.9), rgba(106, 13, 173, 0.9));
   color: #fff;
-  border-bottom-right-radius: 4px;
+  border-radius: 18px;
+  border-bottom-right-radius: 6px;
   box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
-  border-color: rgba(138, 43, 226, 0.5);
+  border: 1px solid rgba(138, 43, 226, 0.5);
 }
 
 .message.model .bubble {
-  background: rgba(30, 30, 40, 0.8);
+  background: rgba(25, 25, 35, 0.9);
   color: #eee;
-  border-bottom-left-radius: 4px;
-  border-left: 2px solid var(--accent-color);
-  /* Tech accent */
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  border-left: 3px solid var(--accent-color);
+  /* Tech accent - más prominente */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .bubble.error {
@@ -370,7 +377,7 @@
 /* Input Area Redesign */
 .input-area {
   padding: 15px;
-  background: rgba(10, 10, 15, 0.6);
+  background: rgba(5, 5, 10, 0.8);
   border-top: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
@@ -386,14 +393,14 @@
 
 .tool-btn,
 .icon-btn {
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
+  padding: 8px;
+  border-radius: 10px;
   /* Slightly squarer for tech look */
   transition: all 0.2s;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,8 +408,9 @@
 
 .tool-btn:hover,
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--accent-color);
+  border-color: rgba(0, 242, 255, 0.3);
 }
 
 .tool-btn svg,
@@ -414,11 +422,11 @@
 
 /* Mic Button with Pulse */
 .mic-btn-large {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(138, 43, 226, 0.1);
-  border: 1px solid rgba(138, 43, 226, 0.4);
+  background: rgba(138, 43, 226, 0.15);
+  border: 1px solid rgba(138, 43, 226, 0.5);
   color: var(--primary-color);
   margin-left: auto;
   transition: all 0.3s;
@@ -454,16 +462,16 @@
 .input-wrapper {
   display: flex;
   align-items: flex-end;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 10px 12px;
   transition: border-color 0.2s;
 }
 
 .input-wrapper:focus-within {
   border-color: var(--primary-color);
-  box-shadow: 0 0 10px rgba(138, 43, 226, 0.1);
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.2);
 }
 
 #prompt-input {
@@ -481,14 +489,15 @@
 }
 
 #prompt-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .icon-btn.primary {
   color: var(--primary-color);
-  background: rgba(138, 43, 226, 0.1);
+  background: rgba(138, 43, 226, 0.15);
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(138, 43, 226, 0.3);
 }
 
 .icon-btn.primary:hover {
@@ -577,28 +586,36 @@
 .msg-actions {
   display: flex;
   justify-content: flex-start;
-  margin-top: 4px;
+  align-items: center;
+  margin-top: 8px;
   padding-left: 5px;
+  gap: 8px;
 }
 
 .speak-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.3);
+  color: var(--accent-color);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 6px;
+  border-radius: 8px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .speak-btn:hover {
-  color: var(--accent-color);
-  background: rgba(0, 242, 255, 0.1);
+  color: #fff;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .speak-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   fill: currentColor;
 }
 
