@@ -71,6 +71,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleScreenAnalysis(sender.tab).then(sendResponse);
         return true; // Async
     }
+    if (request.action === 'analyzeVideo') {
+        handleVideoAnalysis(request, sender.tab).then(sendResponse);
+        return true; // Async
+    }
 });
 
 // --- Core Logic ---
@@ -341,6 +345,33 @@ async function handleScreenAnalysis(tab) {
     }
 }
 
+async function handleVideoAnalysis(request, tab) {
+    try {
+        const keys = await chrome.storage.sync.get(['googleApiKey']);
+        if (!keys.googleApiKey) {
+            const fallbackText = "⚠️ Para analizar videos, necesitas configurar tu Google Gemini API Key en las opciones.";
+            await addToHistory(tab.id, request.text || "Analiza este video", fallbackText);
+            return { error: fallbackText };
+        }
+
+        // Clean Base64 (remove data:video/mp4;base64, prefix if present)
+        let base64Data = request.videoData;
+        if (base64Data.includes(',')) {
+            base64Data = base64Data.split(',')[1];
+        }
+
+        const prompt = request.text || "Describe este video en detalle.";
+        const analysisText = await fetchGeminiVideo(keys.googleApiKey, prompt, base64Data, request.mimeType);
+
+        await addToHistory(tab.id, prompt + " [Video adjunto]", analysisText);
+        return { text: analysisText };
+
+    } catch (e) {
+        console.error("Video Analysis Error:", e);
+        return { error: "Error analizando video: " + e.message };
+    }
+}
+
 async function addToHistory(tabId, userText, assistantText) {
     let history = await getHistory(tabId);
     history.push({ role: "user", content: userText });
@@ -399,6 +430,31 @@ async function fetchGeminiVision(apiKey, base64Image) {
     if (!response.ok) {
         const err = await response.json();
         throw new Error("Gemini Error: " + (err.error?.message || response.statusText));
+    }
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+}
+
+async function fetchGeminiVideo(apiKey, prompt, base64Video, mimeType) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${apiKey}`;
+    const payload = {
+        contents: [{
+            parts: [
+                { text: prompt + " Responde en Español." },
+                { inline_data: { mime_type: mimeType, data: base64Video } }
+            ]
+        }]
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error("Gemini Video Error: " + (err.error?.message || response.statusText));
     }
     const data = await response.json();
     return data.candidates[0].content.parts[0].text;

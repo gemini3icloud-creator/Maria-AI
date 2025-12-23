@@ -176,14 +176,31 @@
 
             let fullText = text;
             if (pendingFileAttachment) {
-                fullText += `\n\n[Contenido de ${pendingFileAttachment.name}]:\n\`\`\`\n${pendingFileAttachment.content}\n\`\`\``;
-                pendingFileAttachment = null;
+                if (pendingFileAttachment.type === 'video') {
+                    // Handled separately below, but we consume the pending attachment
+                } else {
+                    fullText += `\n\n[Contenido de ${pendingFileAttachment.name}]:\n\`\`\`\n${pendingFileAttachment.content}\n\`\`\``;
+                }
             }
 
             input.value = '';
             input.style.height = 'auto';
 
-            safelySendMessage({ action: 'generateContent', type: 'text', text: fullText }, handleResponse);
+            const attachment = pendingFileAttachment; // Copy reference
+            pendingFileAttachment = null; // Reset
+
+            if (attachment && attachment.type === 'video') {
+                // Send Video Analysis Request
+                safelySendMessage({
+                    action: 'analyzeVideo',
+                    text: text,
+                    videoData: attachment.content, // DataURL
+                    mimeType: attachment.mimeType
+                }, handleResponse);
+            } else {
+                // Standard Text/Code Request
+                safelySendMessage({ action: 'generateContent', type: 'text', text: fullText }, handleResponse);
+            }
         };
 
         q('#send-btn').onclick = send;
@@ -236,25 +253,36 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            const allowedTypes = ['text/plain', 'text/javascript', 'text/html', 'text/css', 'application/json', 'text/markdown', 'text/x-python', 'application/javascript'];
-            const allowedExtensions = /\.(js|py|txt|md|json|html|css|ts|jsx|tsx|java|c|cpp|cs|rb|php|xml|yaml|yml|sh|bat)$/i;
+            const allowedTypes = ['text/plain', 'text/javascript', 'text/html', 'text/css', 'application/json', 'text/markdown', 'text/x-python', 'application/javascript', 'video/mp4', 'video/webm', 'video/quicktime'];
+            const allowedExtensions = /\.(js|py|txt|md|json|html|css|ts|jsx|tsx|java|c|cpp|cs|rb|php|xml|yaml|yml|sh|bat|mp4|webm|mov)$/i;
 
             if (!allowedTypes.includes(file.type) && !allowedExtensions.test(file.name)) {
-                addMessage("⚠️ Formato de archivo no soportado. Por favor sube archivos de código o texto.", 'model', true);
+                addMessage("⚠️ Formato de archivo no soportado. Por favor sube archivos de código, texto o video.", 'model', true);
                 return;
             }
 
+            // Check size (max 20MB for inline video API)
+            const MAX_SIZE = 20 * 1024 * 1024;
+            if (file.type.startsWith('video/') && file.size > MAX_SIZE) {
+                addMessage("⚠️ El video es demasiado grande (Máx 20MB).", 'model', true);
+                return;
+            }
+
+            const isVideo = file.type.startsWith('video/');
             const reader = new FileReader();
+
             reader.onload = (e) => {
                 const content = e.target.result;
                 const input = q('#prompt-input');
 
                 pendingFileAttachment = {
                     name: file.name,
-                    content: content
+                    content: content, // This is text content OR DataURL for video
+                    type: isVideo ? 'video' : 'text',
+                    mimeType: file.type
                 };
 
-                const visualTag = ` [Archivo: ${file.name}] `;
+                const visualTag = ` [${isVideo ? 'Video' : 'Archivo'}: ${file.name}] `;
                 input.value += visualTag;
 
                 input.style.height = 'auto';
@@ -262,7 +290,11 @@
 
                 q('#file-input').value = '';
             };
-            reader.readAsText(file);
+            if (isVideo) {
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
         };
 
         q('#mic-btn').onclick = () => {
