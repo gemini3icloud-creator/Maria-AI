@@ -227,6 +227,72 @@
             letter-spacing: 0.5px;
         }
 
+        /* Credits Status */
+        .credits-status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .credits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .credits-header label {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(0, 242, 255, 0.2);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: rotate(180deg);
+        }
+
+        .credits-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .credits-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .credits-info {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            text-align: center;
+        }
+
         .note {
             margin-top: 2rem;
             font-size: 0.8rem;
@@ -263,7 +329,8 @@
             </div>
 
             <!-- Vision Providers -->
-            <label style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
+            <label
+                style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
                 Visión (Opcional)
             </label>
 
@@ -281,7 +348,8 @@
                 </div>
             </div>
             <!-- ElevenLabs Voice Configuration -->
-            <label style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
+            <label
+                style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
                 Voz (ElevenLabs - Opcional)
             </label>
 
@@ -297,6 +365,28 @@
                 <div class="input-wrapper">
                     <input type="text" id="elevenVoice" placeholder="Ej: 21m00Tcm4TlvDq8ikWAM" spellcheck="false">
                 </div>
+            </div>
+
+            <!-- Credits Status -->
+            <div class="credits-status" id="creditsStatus" style="display: none;">
+                <div class="credits-header">
+                    <label>Estado de Créditos</label>
+                    <button id="refreshCredits" class="refresh-btn" title="Actualizar">↻</button>
+                </div>
+                <div class="credits-bar-container">
+                    <div class="credits-bar" id="creditsBar"></div>
+                </div>
+                <div class="credits-info">
+                    <span id="creditsText">--</span>
+                </div>
+            </div>
+
+            <!-- Auto-disable toggle -->
+            <div class="input-group" id="autoDisableGroup" style="display: none;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="autoDisableElevenLabs" style="width: auto;">
+                    <span>Desactivar automáticamente si créditos < 100</span>
+                </label>
             </div>
 
             <button id="saveBtn" class="save-btn">Guardar</button>

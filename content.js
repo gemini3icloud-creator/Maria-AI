@@ -102,6 +102,10 @@
                     <div class="hero-info">
                         <h2>MARIA AI</h2>
                         <span class="status-badge" id="status-badge">ONLINE</span>
+                        <div class="credits-indicator" id="credits-indicator" style="display: none;">
+                            <span class="credits-text" id="credits-text">Créditos: --</span>
+                            <button class="credits-refresh" id="credits-refresh" title="Actualizar créditos">↻</button>
+                        </div>
                     </div>
                     <button id="minimize-btn" class="window-ctrl-btn" title="Minimizar">${ICONS.minimize}</button>
                     <button id="close-btn" class="window-ctrl-btn" title="Cerrar">${ICONS.close}</button>
@@ -137,6 +141,9 @@
         overlayContainer = container;
 
         bindEvents();
+
+        // Check and display ElevenLabs credits
+        updateCreditsDisplay();
 
         // Agregar botón de altavoz al mensaje de bienvenida
         const welcomeMsg = shadowRoot.querySelector('#welcome-message');
@@ -297,15 +304,32 @@
             };
 
             addMessage(`🎬 Analizando video de YouTube (${formatTime(currentTimestamp)})...`, 'user');
-            setLoading(true);
 
-            safelySendMessage({
-                action: 'analyzeYoutube',
-                videoId: videoId,
-                videoTitle: videoTitle,
-                videoDescription: videoDescription,
-                currentTimestamp: formatTime(currentTimestamp)
-            }, handleResponse);
+            // Function to execute the analysis
+            const executeAnalysis = () => {
+                setLoading(true);
+                safelySendMessage({
+                    action: 'analyzeYoutube',
+                    videoId: videoId,
+                    videoTitle: videoTitle,
+                    videoDescription: videoDescription,
+                    currentTimestamp: formatTime(currentTimestamp)
+                }, handleResponse);
+            };
+
+            // Hide UI if open to ensure clean capture/analysis context
+            if (isOpen) {
+                const onHidden = () => {
+                    overlayContainer.removeEventListener('transitionend', onHidden);
+                    setTimeout(() => { // Small buffer after transition
+                        executeAnalysis();
+                    }, 50);
+                };
+                overlayContainer.addEventListener('transitionend', onHidden);
+                toggleUI();
+            } else {
+                executeAnalysis();
+            }
         };
 
         q('#video-input').onchange = (e) => {
@@ -383,6 +407,15 @@
             if (recognition && recognition.started) recognition.stop();
             else if (recognition) recognition.start();
         };
+
+        // Credits refresh button
+        const creditsRefresh = q('#credits-refresh');
+        if (creditsRefresh) {
+            creditsRefresh.onclick = (e) => {
+                e.stopPropagation();
+                updateCreditsDisplay(true);
+            };
+        }
     }
 
     function setupRecognition(q) {
@@ -686,108 +719,154 @@
             .replace(/\n/g, ' ') // Saltos de línea simples a espacio
             .trim();
 
+        // Asegurar que termine en punto para evitar alucinaciones del modelo TTS
+        if (cleanText && !cleanText.match(/[.!?]$/)) {
+            cleanText += '.';
+        }
+
         console.log('Texto limpio para TTS:', cleanText); // Debug
 
+        // Estimar costo
+        const estimatedCost = cleanText.length;
+
         // Obtener configuración
-        const keys = await chrome.storage.sync.get(['elevenLabsKey', 'elevenLabsVoiceId']);
+        const keys = await chrome.storage.sync.get(['elevenLabsKey', 'elevenLabsVoiceId', 'autoDisableElevenLabs']);
 
         // 1. INTENTO CON ELEVENLABS (Voz Anime Real)
         if (keys.elevenLabsKey && keys.elevenLabsVoiceId) {
-            const statusBadge = shadowRoot?.querySelector('#status-badge');
-            if (statusBadge) statusBadge.textContent = "HABLANDO...";
-
+            // Check credits before using ElevenLabs
             try {
-                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${keys.elevenLabsVoiceId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'audio/mpeg',
-                        'Content-Type': 'application/json',
-                        'xi-api-key': keys.elevenLabsKey
-                    },
-                    body: JSON.stringify({
-                        text: cleanText,
-                        model_id: "eleven_multilingual_v2", // Mejor para español
-                        voice_settings: {
-                            stability: 0.5,
-                            similarity_boost: 0.75,
-                            style: 0.5 // Exageración (bueno para anime)
+                const creditsResponse = await chrome.runtime.sendMessage({ action: 'checkCredits' });
+
+                if (creditsResponse && creditsResponse.remaining !== undefined) {
+                    const remaining = creditsResponse.remaining;
+
+                    // Critical: Less than 100 credits
+                    if (remaining < 100) {
+                        if (keys.autoDisableElevenLabs) {
+                            console.log('Créditos insuficientes, usando voz nativa del navegador');
+                            addMessage('🚨 Sin créditos de ElevenLabs. Usando voz del navegador.', 'model', false);
+                            // Fall through to native voice
+                        } else {
+                            addMessage(`🚨 Créditos críticos: ${remaining} restantes. Considera recargar tu cuenta.`, 'model', false);
+                            // Continue with ElevenLabs but warn user
                         }
-                    })
-                });
+                    }
+                    // Warning: Less than 1000 credits
+                    else if (remaining < 1000) {
+                        console.log(`⚠️ Créditos bajos: ${remaining} restantes`);
+                        // Show warning but continue
+                    }
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('ElevenLabs Error:', errorText);
-                    throw new Error('ElevenLabs API Error');
+                    // If we have enough credits or user wants to continue anyway
+                    if (remaining >= 100 || !keys.autoDisableElevenLabs) {
+                        const statusBadge = shadowRoot?.querySelector('#status-badge');
+                        if (statusBadge) statusBadge.textContent = "HABLANDO...";
+
+                        // Helper: Fetch Audio
+                        const fetchElevenLabs = async (modelId) => {
+                            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${keys.elevenLabsVoiceId}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'audio/mpeg',
+                                    'Content-Type': 'application/json',
+                                    'xi-api-key': keys.elevenLabsKey
+                                },
+                                body: JSON.stringify({
+                                    text: cleanText,
+                                    model_id: modelId,
+                                    voice_settings: {
+                                        stability: 0.8,         // Aumentado a 0.8 para evitar creatividad/alucinaciones
+                                        similarity_boost: 0.8,  // Aumentado a 0.8 para mayor fidelidad
+                                        style: 0.0,            // 0.0 para mantenerlo neutral y reducir dramatismo extra
+                                        use_speaker_boost: true
+                                    }
+                                })
+                            });
+                            if (!response.ok) {
+                                const err = await response.text();
+                                throw new Error(err || response.statusText);
+                            }
+                            return await response.blob();
+                        };
+
+                        // Helper: Play Blob
+                        const playBlob = (blob) => {
+                            console.log(`Audio Blob received: ${blob.size} bytes, type: ${blob.type}`);
+                            if (blob.size < 100) {
+                                console.warn("Blob too small, likely text error response masquerading as 200 OK");
+                            }
+
+                            return new Promise((resolve, reject) => {
+                                const audioUrl = URL.createObjectURL(blob);
+                                const audio = new Audio(audioUrl);
+                                currentAudio = audio;
+
+                                audio.onended = () => {
+                                    URL.revokeObjectURL(audioUrl);
+                                    currentAudio = null;
+                                    updateCreditsDisplay();
+                                    resolve();
+                                };
+                                audio.onerror = (e) => {
+                                    URL.revokeObjectURL(audioUrl);
+                                    currentAudio = null;
+                                    const errorCode = audio.error ? audio.error.code : 'unknown';
+                                    const errorMessage = audio.error ? audio.error.message : 'unknown';
+                                    console.error(`Audio Element Error: Code ${errorCode}`, audio.error);
+                                    reject(new Error(`Audio Playback Failed (Code ${errorCode}): ${errorMessage}`));
+                                };
+                                audio.play().catch(err => {
+                                    console.error("Audio Play Promise rejected:", err);
+                                    reject(err);
+                                });
+                            });
+                        };
+
+                        try {
+                            // Attempt 1: Turbo v2.5
+                            console.log("TTS: Trying Turbo...");
+                            const blob = await fetchElevenLabs("eleven_turbo_v2_5");
+                            await playBlob(blob);
+                            if (statusBadge) statusBadge.textContent = "ONLINE";
+                            return; // Success
+                        } catch (err1) {
+                            console.warn("Turbo TTS failed, retrying with Multilingual...", err1);
+
+                            try {
+                                // Attempt 2: Multilingual v2
+                                const blob2 = await fetchElevenLabs("eleven_multilingual_v2");
+                                await playBlob(blob2);
+                                if (statusBadge) statusBadge.textContent = "ONLINE";
+                                return; // Success
+                            } catch (err2) {
+                                console.error("All ElevenLabs attempts failed:", err2);
+                                if (statusBadge) statusBadge.textContent = "ONLINE";
+                                // Fallback to Native below
+                            }
+                        }
+                    }
                 }
-
-                const blob = await response.blob();
-                const audioUrl = URL.createObjectURL(blob);
-                const audio = new Audio(audioUrl);
-                currentAudio = audio; // Store reference to current audio
-
-                audio.onended = () => {
-                    if (statusBadge) statusBadge.textContent = "ONLINE";
-                    URL.revokeObjectURL(audioUrl); // Liberar memoria
-                    currentAudio = null; // Clear reference
-                };
-
-                audio.onerror = (e) => {
-                    console.error('Error reproduciendo audio:', e);
-                    if (statusBadge) statusBadge.textContent = "ONLINE";
-                    currentAudio = null; // Clear reference
-                };
-
-                await audio.play();
-                return; // Salir si funcionó ElevenLabs
-
             } catch (e) {
-                console.error("Fallo ElevenLabs, usando fallback:", e);
-                const statusBadge = shadowRoot?.querySelector('#status-badge');
-                if (statusBadge) statusBadge.textContent = "ONLINE";
-                // Si falla, continuamos al código de abajo (Nativo)
+                console.error("Error checking credits:", e);
+                // Continue with ElevenLabs anyway if credit check fails
             }
         }
 
-        // 2. FALLBACK: NAVEGADOR NATIVO (Simulación Anime)
+        // 2. FALLBACK: NAVEGADOR NATIVO (Voz Natural)
         const utterance = new SpeechSynthesisUtterance(cleanText);
         const voices = synthesis.getVoices();
 
-        // Buscamos voces femeninas en español con prioridad
-        // Primero intentamos voces específicamente femeninas
-        let preferredVoice = voices.find(v =>
-            v.lang.startsWith('es') && (
-                v.name.includes('Mónica') ||
-                v.name.includes('Monica') ||
-                v.name.includes('Paulina') ||
-                v.name.includes('Helena') ||
-                v.name.includes('Lucía') ||
-                v.name.includes('Lucia') ||
-                v.name.includes('Isabela') ||
-                v.name.includes('Dalia') ||
-                v.name.includes('Female') ||
-                v.name.includes('female') ||
-                v.name.toLowerCase().includes('woman')
-            )
+        // Usar Google español (la voz más natural y femenina disponible)
+        const preferredVoice = voices.find(v =>
+            v.lang.startsWith('es') && v.name.includes('Google')
         );
-
-        // Si no encontramos una voz específicamente femenina, buscamos Google español (generalmente femenina)
-        if (!preferredVoice) {
-            preferredVoice = voices.find(v =>
-                v.lang.startsWith('es') && v.name.includes('Google')
-            );
-        }
-
-        // Como último recurso, cualquier voz en español
-        if (!preferredVoice) {
-            preferredVoice = voices.find(v => v.lang.startsWith('es'));
-        }
 
         if (preferredVoice) utterance.voice = preferredVoice;
 
-        // TRUCO: Pitch alto y velocidad rápida simulan voz de anime/loli
-        utterance.pitch = 1.6; // Rango normal es 0-2. 1.6 es bastante agudo.
-        utterance.rate = 1.15; // Un poco más rápido
+        // Usar valores naturales para una voz clara y profesional
+        utterance.pitch = 1.0; // Tono natural
+        utterance.rate = 1.0; // Velocidad natural
 
         synthesis.speak(utterance);
     }
@@ -952,6 +1031,49 @@
                 console.error("Maria AI Error:", error);
                 if (callback) callback({ error: error.message });
             }
+        }
+    }
+
+    async function updateCreditsDisplay(forceRefresh = false) {
+        try {
+            const action = forceRefresh ? 'refreshCredits' : 'checkCredits';
+            const credits = await chrome.runtime.sendMessage({ action });
+
+            if (!credits || credits.remaining === undefined) {
+                // No ElevenLabs configured or error
+                const indicator = shadowRoot?.querySelector('#credits-indicator');
+                if (indicator) {
+                    indicator.style.display = 'none';
+                }
+                return;
+            }
+
+            const indicator = shadowRoot?.querySelector('#credits-indicator');
+            const creditsText = shadowRoot?.querySelector('#credits-text');
+
+            if (indicator && creditsText) {
+                indicator.style.display = 'flex';
+
+                const { remaining, total } = credits;
+                const percentage = total > 0 ? (remaining / total) * 100 : 0;
+
+                // Update text
+                creditsText.textContent = `Créditos: ${remaining.toLocaleString()}`;
+
+                // Color coding based on percentage
+                if (percentage > 20) {
+                    creditsText.style.color = '#00ff88'; // Green
+                } else if (percentage > 10) {
+                    creditsText.style.color = '#ffaa00'; // Yellow
+                } else {
+                    creditsText.style.color = '#ff4444'; // Red
+                }
+
+                // Add tooltip with more details
+                creditsText.title = `${remaining.toLocaleString()} / ${total.toLocaleString()} (${percentage.toFixed(1)}%)`;
+            }
+        } catch (error) {
+            console.error('Error updating credits display:', error);
         }
     }
 

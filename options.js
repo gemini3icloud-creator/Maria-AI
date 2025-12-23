@@ -21,14 +21,18 @@ if (toggleBtn && apiKeyInput) {
   });
 }
 
+// Refresh credits button
+document.getElementById('refreshCredits').addEventListener('click', function () {
+  checkAndDisplayCredits(true);
+});
+
 function saveOptions() {
   const apiKey = document.getElementById('apiKey').value;
   const openaiKey = document.getElementById('openaiKey').value;
   const googleKey = document.getElementById('googleKey').value;
-
-  // NUEVO: Capturar valores de ElevenLabs
   const elevenKey = document.getElementById('elevenKey').value;
   const elevenVoice = document.getElementById('elevenVoice').value;
+  const autoDisable = document.getElementById('autoDisableElevenLabs').checked;
 
   if (!apiKey) {
     showStatus('Por favor, ingresa una clave de DeepSeek principal.', 'error');
@@ -39,18 +43,25 @@ function saveOptions() {
     deepseekApiKey: apiKey,
     openaiApiKey: openaiKey,
     googleApiKey: googleKey,
-    // NUEVO: Guardar en storage
     elevenLabsKey: elevenKey,
-    elevenLabsVoiceId: elevenVoice
+    elevenLabsVoiceId: elevenVoice,
+    autoDisableElevenLabs: autoDisable
   }, () => {
     showStatus('Guardado correctamente.', 'success');
+
+    // Check credits if ElevenLabs key was saved
+    if (elevenKey) {
+      document.getElementById('creditsStatus').style.display = 'block';
+      document.getElementById('autoDisableGroup').style.display = 'block';
+      checkAndDisplayCredits();
+    }
   });
 }
 
 function restoreOptions() {
   chrome.storage.sync.get([
     'deepseekApiKey', 'openaiApiKey', 'googleApiKey',
-    'elevenLabsKey', 'elevenLabsVoiceId' // NUEVO
+    'elevenLabsKey', 'elevenLabsVoiceId', 'autoDisableElevenLabs'
   ], (items) => {
     if (items.deepseekApiKey) {
       document.getElementById('apiKey').value = items.deepseekApiKey;
@@ -61,13 +72,18 @@ function restoreOptions() {
     if (items.googleApiKey) {
       document.getElementById('googleKey').value = items.googleApiKey;
     }
-
-    // NUEVO: Restaurar valores de ElevenLabs
     if (items.elevenLabsKey) {
       document.getElementById('elevenKey').value = items.elevenLabsKey;
+      // Show credits section if key exists
+      document.getElementById('creditsStatus').style.display = 'block';
+      document.getElementById('autoDisableGroup').style.display = 'block';
+      checkAndDisplayCredits();
     }
     if (items.elevenLabsVoiceId) {
       document.getElementById('elevenVoice').value = items.elevenLabsVoiceId;
+    }
+    if (items.autoDisableElevenLabs !== undefined) {
+      document.getElementById('autoDisableElevenLabs').checked = items.autoDisableElevenLabs;
     }
   });
 }
@@ -75,9 +91,45 @@ function restoreOptions() {
 function showStatus(message, type) {
   const status = document.getElementById('status');
   status.textContent = message;
-  status.style.color = type === 'error' ? '#FF0055' : '#00F2FF'; // Neon Error Red / Neon Cyan
+  status.style.color = type === 'error' ? '#FF0055' : '#00F2FF';
 
   setTimeout(() => {
     status.textContent = '';
   }, 3000);
+}
+
+// Check and display credits
+async function checkAndDisplayCredits(forceRefresh = false) {
+  try {
+    const action = forceRefresh ? 'refreshCredits' : 'checkCredits';
+    const credits = await chrome.runtime.sendMessage({ action });
+
+    if (!credits || credits.remaining === undefined) {
+      document.getElementById('creditsStatus').style.display = 'none';
+      return;
+    }
+
+    const { remaining, total } = credits;
+    const percentage = total > 0 ? (remaining / total) * 100 : 0;
+
+    // Update progress bar
+    const bar = document.getElementById('creditsBar');
+    bar.style.width = `${percentage}%`;
+
+    // Color code the bar
+    if (percentage > 20) {
+      bar.style.background = 'linear-gradient(90deg, #00ff88, #00cc66)';
+    } else if (percentage > 10) {
+      bar.style.background = 'linear-gradient(90deg, #ffaa00, #ff8800)';
+    } else {
+      bar.style.background = 'linear-gradient(90deg, #ff4444, #cc0000)';
+    }
+
+    // Update text
+    const text = document.getElementById('creditsText');
+    text.textContent = `${remaining.toLocaleString()} / ${total.toLocaleString()} créditos (${percentage.toFixed(1)}%)`;
+
+  } catch (error) {
+    console.error('Error checking credits:', error);
+  }
 }

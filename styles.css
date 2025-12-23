@@ -191,6 +191,49 @@
   display: inline-block;
 }
 
+/* Credits Indicator */
+.credits-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.credits-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #00ff88;
+  letter-spacing: 0.3px;
+  transition: color 0.3s;
+}
+
+.credits-refresh {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.credits-refresh:hover {
+  background: rgba(0, 242, 255, 0.2);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  transform: rotate(180deg);
+}
+
+.credits-refresh:active {
+  transform: rotate(360deg);
+}
+
 /* Buttons Top Right */
 .window-ctrl-btn {
   position: absolute;

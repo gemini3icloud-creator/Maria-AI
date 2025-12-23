@@ -1,6 +1,9 @@
 // Maria AI - Background Core
 // Usaremos fetch directo a la REST API para mantenerlo simple y sin dependencias de compilación.
 
+// Model Configuration
+// NOTE: "deepseek-chat" currently points to DeepSeek V3 (latest stable model)
+// FUTURE: Consider moving to chrome.storage.sync for user-configurable model selection
 const MODEL_NAME = "deepseek-chat";
 const SYSTEM_PROMPT = `Eres Maria, una IA avanzada integrada en el navegador.
 Tu objetivo es ser útil, precisa y carismática.
@@ -83,6 +86,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     if (request.action === 'analyzeYoutube') {
         handleYoutubeAnalysis(request, sender.tab).then(sendResponse);
+        return true; // Async
+    }
+    if (request.action === 'checkCredits') {
+        getCachedCredits().then(sendResponse);
+        return true; // Async
+    }
+    if (request.action === 'refreshCredits') {
+        // Force refresh by clearing cache first
+        chrome.storage.local.remove(['elevenLabsCredits', 'elevenLabsCreditsTimestamp'])
+            .then(() => getCachedCredits())
+            .then(sendResponse);
         return true; // Async
     }
 });
@@ -229,10 +243,11 @@ async function handleChatInteraction(request, tab) {
         workingHistory = trimHistory(workingHistory);
 
         // OBTENER INFO DE LA PESTAÑA ACTUAL
-        const currentContext = `\n\n[Contexto del Navegador]\nEstás viendo la página: "${tab.title}"\nURL: ${tab.url}`;
+        const currentContext = `[Contexto del Navegador]\nEstás viendo la página: "${tab.title}"\nURL: ${tab.url}`;
 
         let currentMessages = [
-            { role: "system", content: SYSTEM_PROMPT + currentContext },
+            { role: "system", content: SYSTEM_PROMPT }, // Static System Prompt (Cached)
+            { role: "system", content: currentContext }, // Dynamic Context
             ...workingHistory
         ];
 
@@ -521,7 +536,7 @@ async function fetchOpenAIVision(apiKey, base64Image, customPrompt) {
 }
 
 async function fetchGeminiVision(apiKey, base64Image, customPrompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Stable model
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Efficient Flash model
     const payload = {
         contents: [{
             parts: [
@@ -586,4 +601,142 @@ async function executeBrowserAction(name, args, currentTab) {
         return { status: "searching", query: args.query };
     }
     return { error: "Function not found" };
+}
+
+// --- ElevenLabs Credit Management ---
+
+/**
+ * Check ElevenLabs subscription and credit status
+ * @param {string} apiKey - ElevenLabs API key
+ * @returns {Promise<{used: number, total: number, remaining: number}>}
+ */
+async function checkElevenLabsCredits(apiKey) {
+    try {
+        const response = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
+            method: 'GET',
+            headers: {
+                'xi-api-key': apiKey
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+
+            // Handle Rate Limiting (429)
+            if (response.status === 429) {
+                console.warn('ElevenLabs API Rate Limit Exceeded. Pausing credit checks.');
+                throw new Error("RATE_LIMITED");
+            }
+
+            // Handle restricted keys gracefully (missing user_read permission)
+            if (response.status === 401 || response.status === 403 || errorText.includes('missing_permissions')) {
+                console.warn('ElevenLabs API Key restricted: Cannot check credits (missing user_read). Credit monitoring disabled.');
+                return null;
+            }
+            console.error('ElevenLabs API Error Response:', errorText);
+            throw new Error(`ElevenLabs API returned ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('ElevenLabs subscription data:', data);
+
+        return {
+            used: data.character_count || 0,
+            total: data.character_limit || 0,
+            remaining: (data.character_limit || 0) - (data.character_count || 0),
+            status: data.status || 'unknown'
+        };
+    } catch (error) {
+        if (error.message !== "RATE_LIMITED") {
+            console.error('Error checking ElevenLabs credits:', error);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Get cached credits or fetch fresh if cache expired
+ * @returns {Promise<{used: number, total: number, remaining: number, cached: boolean}>}
+ */
+async function getCachedCredits() {
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+    try {
+        const keys = await chrome.storage.sync.get(['elevenLabsKey']);
+        if (!keys.elevenLabsKey) {
+            console.log('No ElevenLabs API key configured');
+            return null;
+        }
+
+        const cache = await chrome.storage.local.get([
+            'elevenLabsCredits',
+            'elevenLabsCreditsTimestamp'
+        ]);
+
+        const now = Date.now();
+        const timestamp = cache.elevenLabsCreditsTimestamp || 0;
+
+        // Check if cache is valid
+        if (cache.elevenLabsCredits && (now - timestamp) < CACHE_DURATION) {
+            console.log('Returning cached credits');
+            return { ...cache.elevenLabsCredits, cached: true };
+        }
+
+        // Cache expired or doesn't exist, fetch fresh data
+        console.log('Fetching fresh credits from ElevenLabs API');
+        const credits = await checkElevenLabsCredits(keys.elevenLabsKey);
+
+        // Update cache
+        await chrome.storage.local.set({
+            elevenLabsCredits: credits,
+            elevenLabsCreditsTimestamp: now
+        });
+
+        return { ...credits, cached: false };
+    } catch (error) {
+        if (error.message === "RATE_LIMITED") {
+            console.warn('ElevenLabs Rate Limit active - returning stale cache.');
+        } else {
+            console.error('Error getting cached credits:', error);
+        }
+        // Return cached data even if expired, better than nothing
+        const cache = await chrome.storage.local.get(['elevenLabsCredits']);
+        if (cache.elevenLabsCredits) {
+            console.log('Returning stale cached credits due to error');
+            return { ...cache.elevenLabsCredits, cached: true, stale: true };
+        }
+        // Return null instead of throwing to prevent UI breakage
+        return null;
+    }
+}
+
+/**
+ * Estimate the cost in characters for a given text
+ * @param {string} text - Text to estimate
+ * @returns {number} - Estimated character count
+ */
+function estimateTextCost(text) {
+    // ElevenLabs charges per character
+    return text.length;
+}
+
+/**
+ * Update credits after TTS usage
+ * @param {number} charactersUsed - Number of characters used
+ */
+async function updateCreditsAfterUse(charactersUsed) {
+    try {
+        const cache = await chrome.storage.local.get(['elevenLabsCredits']);
+        if (cache.elevenLabsCredits) {
+            cache.elevenLabsCredits.used += charactersUsed;
+            cache.elevenLabsCredits.remaining -= charactersUsed;
+
+            await chrome.storage.local.set({
+                elevenLabsCredits: cache.elevenLabsCredits,
+                elevenLabsCreditsTimestamp: Date.now()
+            });
+        }
+    } catch (error) {
+        console.error('Error updating credits:', error);
+    }
 }
