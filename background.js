@@ -53,6 +53,12 @@ const tools = [
 // --- Listeners ---
 
 chrome.action.onClicked.addListener((tab) => {
+    if (tab.url.startsWith("chrome://") || tab.url.startsWith("edge://") || tab.url.startsWith("about:")) {
+        // Restricted pages cannot have scripts injected
+        console.warn("Maria AI: Cannot inject into restricted page:", tab.url);
+        return;
+    }
+
     chrome.tabs.sendMessage(tab.id, { action: "toggle" }).catch(() => {
         // Si falla (página restringida o script no cargado), inyectamos manualmente
         chrome.scripting.executeScript({
@@ -75,7 +81,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleVideoAnalysis(request, sender.tab).then(sendResponse);
         return true; // Async
     }
+    if (request.action === 'analyzeYoutube') {
+        handleYoutubeAnalysis(request, sender.tab).then(sendResponse);
+        return true; // Async
+    }
 });
+
+async function handleYoutubeAnalysis(request, tab) {
+    try {
+        const screenshotUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 60 });
+        chrome.tabs.sendMessage(tab.id, { action: "captureDone" }).catch(() => { });
+        const base64Image = screenshotUrl.split(',')[1];
+
+        const keys = await chrome.storage.sync.get(['openaiApiKey', 'googleApiKey']);
+        let analysisText = "";
+
+        const videoId = request.videoId || "unknown";
+        const videoTitle = request.videoTitle || "Desconocido";
+        const videoDescription = request.videoDescription || "No disponible";
+        const timestamp = request.currentTimestamp || "00:00:00";
+
+        const promptText = `Has recibido una captura de pantalla de un video de YouTube.
+
+Contexto del Video:
+- Título: ${videoTitle}
+- Tiempo Actual: ${timestamp}
+- ID: ${videoId}
+- Descripción: ${videoDescription.substring(0, 300)}...
+
+Analiza la imagen visual (el frame actual) teniendo EN CUENTA este contexto. Explica qué está pasando en el video en este momento, relacionando lo visual con el tema del video.`;
+
+        // Check for OpenAI / Gemini
+        if (keys.openaiApiKey) {
+            analysisText = await fetchOpenAIVision(keys.openaiApiKey, base64Image, promptText);
+        } else if (keys.googleApiKey) {
+            analysisText = await fetchGeminiVision(keys.googleApiKey, base64Image, promptText);
+        } else {
+            const fallbackText = "📸 Captura del video realizada.\n\n(Tip: Para análisis visual, configura tu API Key de OpenAI o Google Gemini en las opciones.)";
+            await addToHistory(tab.id, "Analiza video de YouTube", fallbackText);
+            return { text: fallbackText, imageData: screenshotUrl };
+        }
+
+        await addToHistory(tab.id, `Analiza video de YouTube (${videoId})`, analysisText);
+        return { text: analysisText, imageData: screenshotUrl };
+
+    } catch (e) {
+        return { error: "Error analizando YouTube: " + e.message };
+    }
+}
 
 // --- Core Logic ---
 
@@ -381,7 +434,7 @@ async function addToHistory(tabId, userText, assistantText) {
 }
 
 // --- Vision Providers (Unchanged generally, but ensuring they work) ---
-async function fetchOpenAIVision(apiKey, base64Image) {
+async function fetchOpenAIVision(apiKey, base64Image, customPrompt) {
     const url = "https://api.openai.com/v1/chat/completions";
     const payload = {
         model: "gpt-4o",
@@ -389,7 +442,7 @@ async function fetchOpenAIVision(apiKey, base64Image) {
             {
                 role: "user",
                 content: [
-                    { type: "text", text: "Analiza esta captura de pantalla en detalle y explica qué se ve, elementos de UI importantes o contenido relevante. Responde en Español." },
+                    { type: "text", text: customPrompt || "Analiza esta captura de pantalla en detalle y explica qué se ve, elementos de UI importantes o contenido relevante. Responde en Español." },
                     { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
                 ]
             }
@@ -412,12 +465,12 @@ async function fetchOpenAIVision(apiKey, base64Image) {
     return data.choices[0].message.content;
 }
 
-async function fetchGeminiVision(apiKey, base64Image) {
+async function fetchGeminiVision(apiKey, base64Image, customPrompt) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Updated Model
     const payload = {
         contents: [{
             parts: [
-                { text: "Analiza esta captura de pantalla en detalle y explica qué se ve. Responde en Español." },
+                { text: customPrompt || "Analiza esta captura de pantalla en detalle y explica qué se ve. Responde en Español." },
                 { inline_data: { mime_type: "image/jpeg", data: base64Image } }
             ]
         }]

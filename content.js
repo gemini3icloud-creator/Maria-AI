@@ -29,7 +29,9 @@
         speaker: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>',
         stop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>',
         minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="12" x2="23" y2="12"></line></svg>',
-        expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>'
+        expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>',
+        video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>',
+        youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>'
     };
 
     // Tiny Sanitizer to avoid heavy libraries for now
@@ -111,10 +113,13 @@
                 <div class="input-area">
                     <div class="input-controls">
                          <button class="tool-btn" id="btn-screen" title="Analizar Pantalla">${ICONS.camera}</button>
+                         <button class="tool-btn" id="btn-video" title="Analizar Video">${ICONS.video}</button>
+                         <button class="tool-btn" id="btn-youtube" title="Analizar YouTube">${ICONS.youtube}</button>
                          <label class="tool-btn" id="btn-file" title="Adjuntar archivo">
                             ${ICONS.attach}
                             <input type="file" hidden id="file-input">
                         </label>
+                        <input type="file" hidden id="video-input" accept="video/*">
                          <button id="mic-btn" class="mic-btn-large" title="Hablar con Maria">${ICONS.mic}</button>
                     </div>
                     <div class="input-wrapper">
@@ -244,6 +249,47 @@
             }
         };
 
+        q('#btn-video').onclick = () => {
+            q('#video-input').click();
+        };
+
+        q('#btn-youtube').onclick = () => {
+            const videoId = new URLSearchParams(window.location.search).get('v');
+            if (!videoId) {
+                addMessage("⚠️ No se detectó un video de YouTube activo.", 'model', true);
+                return;
+            }
+
+            // Scrape Metadata
+            const videoElement = document.querySelector('video');
+            const currentTimestamp = videoElement ? videoElement.currentTime : 0;
+            const videoTitle = document.title.replace(' - YouTube', '');
+            const videoDescription = document.querySelector('meta[name="description"]')?.content || "";
+
+            // Format time
+            const formatTime = (s) => {
+                const date = new Date(0);
+                date.setSeconds(s);
+                return date.toISOString().substr(11, 8);
+            };
+
+            addMessage(`🎬 Analizando video de YouTube (${formatTime(currentTimestamp)})...`, 'user');
+            setLoading(true);
+
+            safelySendMessage({
+                action: 'analyzeYoutube',
+                videoId: videoId,
+                videoTitle: videoTitle,
+                videoDescription: videoDescription,
+                currentTimestamp: formatTime(currentTimestamp)
+            }, handleResponse);
+        };
+
+        q('#video-input').onchange = (e) => {
+            handleFileSelect(e.target.files[0], true);
+            e.target.value = ''; // Reset input to allow re-selecting same file
+        };
+
         q('.sidebar').onclick = (e) => {
             const url = e.target.getAttribute('data-url');
             if (url) window.open(url, '_blank');
@@ -251,6 +297,12 @@
 
         q('#file-input').onchange = (e) => {
             const file = e.target.files[0];
+            if (!file) return;
+            handleFileSelect(file, false);
+            e.target.value = '';
+        };
+
+        function handleFileSelect(file, forcedVideo = false) {
             if (!file) return;
 
             const allowedTypes = ['text/plain', 'text/javascript', 'text/html', 'text/css', 'application/json', 'text/markdown', 'text/x-python', 'application/javascript', 'video/mp4', 'video/webm', 'video/quicktime'];
@@ -269,6 +321,11 @@
             }
 
             const isVideo = file.type.startsWith('video/');
+            // Validation if user manually picked a non-video via video button (rare in file picker but possible)
+            if (forcedVideo && !isVideo) {
+                addMessage("⚠️ Por favor selecciona un archivo de video.", 'model', true);
+                return;
+            }
             const reader = new FileReader();
 
             reader.onload = (e) => {
@@ -288,14 +345,15 @@
                 input.style.height = 'auto';
                 input.style.height = (input.scrollHeight) + 'px';
 
-                q('#file-input').value = '';
+                input.style.height = 'auto';
+                input.style.height = (input.scrollHeight) + 'px';
             };
             if (isVideo) {
                 reader.readAsDataURL(file);
             } else {
                 reader.readAsText(file);
             }
-        };
+        }
 
         q('#mic-btn').onclick = () => {
             if (!recognition) setupRecognition(q);
@@ -559,6 +617,9 @@
                 isOpen = true;
                 const feed = shadowRoot?.querySelector('#chat-feed');
                 if (feed) feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+
+                // Check YouTube visibility
+
             }
         }
     }
