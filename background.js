@@ -173,13 +173,44 @@ function trimHistory(history) {
             tempHistory.unshift(msg);
             currentChars += length;
         } else {
-            // Si es un tool result, tratar de mantenerlo junto a su llamada? 
-            // Simplificación: corto aquí.
+            // Stop adding messages
             break;
         }
     }
-    // Asegurarse de que el primer mensaje no sea un 'tool' o 'tool_result' huérfano si es posible,
-    // pero DeepSeek suele manejarlo. Lo ideal es mantener system prompt pero ese se añade dinámicamente.
+
+    // Orphan Detection: Remove orphaned tool results or tool calls
+    // If first message is a tool result, remove it (orphaned)
+    while (tempHistory.length > 0 && tempHistory[0].role === 'tool') {
+        console.warn("Removing orphaned tool result at start of history");
+        tempHistory.shift();
+    }
+
+    // If we have an assistant message with tool_calls but no corresponding tool results, remove it
+    for (let i = tempHistory.length - 1; i >= 0; i--) {
+        const msg = tempHistory[i];
+        if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+            // Check if there are corresponding tool results after this message
+            let hasResults = false;
+            for (let j = i + 1; j < tempHistory.length; j++) {
+                if (tempHistory[j].role === 'tool') {
+                    hasResults = true;
+                    break;
+                }
+                // If we hit another assistant or user message, stop looking
+                if (tempHistory[j].role === 'assistant' || tempHistory[j].role === 'user') {
+                    break;
+                }
+            }
+
+            // If no results found and this is the last message, it's incomplete but OK (in progress)
+            // If no results and NOT the last message, it's orphaned
+            if (!hasResults && i < tempHistory.length - 1) {
+                console.warn("Removing orphaned tool_calls at index", i);
+                tempHistory.splice(i, 1);
+            }
+        }
+    }
+
     return tempHistory;
 }
 
@@ -241,9 +272,18 @@ async function handleChatInteraction(request, tab) {
                     const { name, arguments: argsJson } = toolCall.function;
                     let args = {};
                     try {
-                        args = JSON.parse(argsJson);
+                        // Clean markdown wrapping that DeepSeek sometimes adds
+                        let cleanedArgs = argsJson;
+                        if (cleanedArgs.startsWith("```")) {
+                            cleanedArgs = cleanedArgs
+                                .replace(/^```json\s?/, "")
+                                .replace(/^```\s?/, "")
+                                .replace(/```$/, "")
+                                .trim();
+                        }
+                        args = JSON.parse(cleanedArgs);
                     } catch (err) {
-                        console.error("Error parsing tool args:", err);
+                        console.error("Error parsing tool args:", err, "Original:", argsJson);
                         args = { error: "Invalid JSON args" };
                     }
 
@@ -310,61 +350,76 @@ async function streamDeepSeek(apiKey, payload, tabId) {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
+    let buffer = ""; // Buffer for incomplete chunks
     let accumulatedContent = "";
-    let toolCalls = {}; // Map by index
+    let toolCallsMap = {}; // Map by index
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+            // 1. Add to buffer
+            buffer += decoder.decode(value, { stream: true });
 
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed === "data: [DONE]") continue;
-            if (trimmed.startsWith("data: ")) {
-                try {
-                    const jsonStr = trimmed.substring(6);
-                    const data = JSON.parse(jsonStr);
-                    const choice = data.choices[0];
-                    const delta = choice.delta;
+            // 2. Process complete lines
+            let lines = buffer.split('\n');
+            buffer = lines.pop() || ""; // Save incomplete line for next iteration
 
-                    // 1. Handle Content
-                    if (delta.content) {
-                        accumulatedContent += delta.content;
-                        // Send chunk to UI
-                        chrome.tabs.sendMessage(tabId, { action: "streamChunk", chunk: delta.content }).catch(() => { });
-                    }
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed === "data: [DONE]") continue;
 
-                    // 2. Handle Tool Calls (Chunks)
-                    if (delta.tool_calls) {
-                        for (const tc of delta.tool_calls) {
-                            const index = tc.index;
-                            if (!toolCalls[index]) {
-                                toolCalls[index] = {
-                                    index: index,
-                                    id: tc.id || "",
-                                    type: tc.type || "function",
-                                    function: { name: "", arguments: "" }
-                                };
-                            }
-                            if (tc.id) toolCalls[index].id = tc.id;
-                            if (tc.function?.name) toolCalls[index].function.name += tc.function.name;
-                            if (tc.function?.arguments) toolCalls[index].function.arguments += tc.function.arguments;
+                if (trimmed.startsWith("data: ")) {
+                    try {
+                        const jsonStr = trimmed.substring(6);
+                        const data = JSON.parse(jsonStr);
+                        const choice = data.choices[0];
+
+                        // Validate that delta exists (DeepSeek sometimes sends empty keep-alive packets)
+                        if (!choice || !choice.delta) continue;
+
+                        const delta = choice.delta;
+
+                        // 1. Handle Content
+                        if (delta.content) {
+                            accumulatedContent += delta.content;
+                            // Send chunk to UI
+                            chrome.tabs.sendMessage(tabId, { action: "streamChunk", chunk: delta.content }).catch(() => { });
                         }
-                    }
 
-                } catch (e) {
-                    console.error("Error parsing stream line:", e, line);
+                        // 2. Handle Tool Calls (Chunks)
+                        if (delta.tool_calls) {
+                            for (const tc of delta.tool_calls) {
+                                const index = tc.index;
+                                if (!toolCallsMap[index]) {
+                                    toolCallsMap[index] = {
+                                        index: index,
+                                        id: tc.id || "",
+                                        type: tc.type || "function",
+                                        function: { name: "", arguments: "" }
+                                    };
+                                }
+                                if (tc.id) toolCallsMap[index].id = tc.id;
+                                if (tc.function?.name) toolCallsMap[index].function.name += tc.function.name;
+                                if (tc.function?.arguments) toolCallsMap[index].function.arguments += tc.function.arguments;
+                            }
+                        }
+
+                    } catch (e) {
+                        console.warn("Error parsing JSON chunk, skipping line:", e);
+                    }
                 }
             }
         }
+    } catch (err) {
+        console.error("Stream reading error:", err);
+        throw err;
     }
 
     return {
         content: accumulatedContent,
-        toolCalls: Object.values(toolCalls)
+        toolCalls: Object.values(toolCallsMap)
     };
 }
 
@@ -466,7 +521,7 @@ async function fetchOpenAIVision(apiKey, base64Image, customPrompt) {
 }
 
 async function fetchGeminiVision(apiKey, base64Image, customPrompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Updated Model
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Stable model
     const payload = {
         contents: [{
             parts: [

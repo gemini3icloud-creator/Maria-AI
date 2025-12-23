@@ -18,6 +18,7 @@
     let isOpen = false;
     let recognition = null;
     let synthesis = window.speechSynthesis;
+    let currentAudio = null; // Track current audio element (ElevenLabs)
 
     // Iconos SVG (Minimalist / Tech)
     const ICONS = {
@@ -57,6 +58,7 @@
         host.style.zIndex = '2147483647';
         host.style.top = '0';
         host.style.right = '0';
+        host.style.pointerEvents = 'none'; // Prevent blocking clicks when hidden
         document.body.appendChild(host);
 
         shadowRoot = host.attachShadow({ mode: 'open' });
@@ -78,6 +80,7 @@
         // 3. Estructura HTML
         const container = document.createElement('div');
         container.id = 'maria-overlay';
+        container.style.pointerEvents = 'auto'; // Re-enable pointer events for content
 
         const iconUrl = chrome.runtime.getURL('assets/icon.png');
 
@@ -105,7 +108,7 @@
                 </div>
 
                 <div class="chat-area" id="chat-feed">
-                    <div class="message model">
+                    <div class="message model" id="welcome-message">
                         <div class="bubble">Hola, soy Maria. ¿En qué te ayudo hoy? ✨</div>
                     </div>
                 </div>
@@ -134,6 +137,26 @@
         overlayContainer = container;
 
         bindEvents();
+
+        // Agregar botón de altavoz al mensaje de bienvenida
+        const welcomeMsg = shadowRoot.querySelector('#welcome-message');
+        if (welcomeMsg) {
+            const actions = document.createElement('div');
+            actions.className = 'msg-actions';
+
+            const btn = document.createElement('button');
+            btn.innerHTML = ICONS.speaker;
+            btn.className = 'speak-btn';
+            btn.title = 'Escuchar';
+            btn.onclick = () => {
+                const bubble = welcomeMsg.querySelector('.bubble');
+                const cleanText = bubble ? bubble.textContent : '';
+                speakMessage(cleanText);
+            };
+
+            actions.appendChild(btn);
+            welcomeMsg.appendChild(actions);
+        }
 
         requestAnimationFrame(() => {
             container.classList.add('visible');
@@ -462,6 +485,9 @@
 
     let currentStreamMsg = null;
     let currentStreamText = "";
+    let renderScheduled = false;
+    let lastRenderTime = 0;
+    const RENDER_THROTTLE_MS = 100; // Render at most every 100ms
 
     function appendStreamMessage(chunk) {
         const feed = shadowRoot?.querySelector('#chat-feed');
@@ -475,23 +501,44 @@
         }
 
         currentStreamText += chunk;
-        const bubble = currentStreamMsg.querySelector('.bubble');
 
-        let html;
-        if (typeof marked !== 'undefined' && marked.parse) {
-            html = sanitizeHTML(marked.parse(currentStreamText));
-        } else {
-            html = currentStreamText.replace(/\n/g, '<br>');
+        // Throttle rendering using requestAnimationFrame and time-based throttling
+        const now = Date.now();
+        if (!renderScheduled && (now - lastRenderTime) >= RENDER_THROTTLE_MS) {
+            renderScheduled = true;
+            requestAnimationFrame(() => {
+                renderScheduled = false;
+                lastRenderTime = Date.now();
+
+                // Check if currentStreamMsg still exists (might be null if stream finalized)
+                if (!currentStreamMsg) return;
+
+                const bubble = currentStreamMsg.querySelector('.bubble');
+                if (!bubble) return;
+
+                let html;
+                if (typeof marked !== 'undefined' && marked.parse) {
+                    html = sanitizeHTML(marked.parse(currentStreamText));
+                } else {
+                    html = currentStreamText.replace(/\n/g, '<br>');
+                }
+
+                bubble.innerHTML = html;
+                feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+            });
         }
-
-        bubble.innerHTML = html;
-        feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
     }
 
     function finalizeStreamMessage() {
         if (currentStreamMsg) {
             const feed = shadowRoot?.querySelector('#chat-feed');
             if (feed) {
+                // Final render with complete markdown
+                const bubble = currentStreamMsg.querySelector('.bubble');
+                if (bubble && typeof marked !== 'undefined' && marked.parse) {
+                    bubble.innerHTML = sanitizeHTML(marked.parse(currentStreamText));
+                }
+
                 // Process code blocks for the finished message
                 const codeBlocks = currentStreamMsg.querySelectorAll('pre code');
                 codeBlocks.forEach(codeBlock => {
@@ -542,6 +589,7 @@
             }
             currentStreamMsg = null;
             currentStreamText = "";
+            renderScheduled = false; // Reset render flag
         }
     }
 
@@ -590,16 +638,15 @@
             wrapper.appendChild(pre);
         });
 
-        if (sender === 'model' && !isError) {
+        // Agregar botón de altavoz a TODOS los mensajes de la IA (incluyendo errores)
+        if (sender === 'model') {
             const actions = document.createElement('div');
-            actions.wrapper = 'msg-actions'; // Fix className typo? No, property is not wrapper.
-            actions.className = 'msg-actions'; // Fix
+            actions.className = 'msg-actions';
 
             const btn = document.createElement('button');
             btn.innerHTML = ICONS.speaker;
             btn.className = 'speak-btn';
             btn.title = 'Escuchar';
-            // CORREGIDO: Extraer texto limpio del bubble en lugar de usar la variable text
             btn.onclick = () => {
                 const bubble = msg.querySelector('.bubble');
                 const cleanText = bubble ? bubble.textContent : text;
@@ -618,6 +665,10 @@
         // Cancelar cualquier audio anterior
         if (synthesis.speaking) {
             synthesis.cancel();
+        }
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
         }
 
         // Limpiar texto de markdown y HTML de forma más agresiva
@@ -673,15 +724,18 @@
                 const blob = await response.blob();
                 const audioUrl = URL.createObjectURL(blob);
                 const audio = new Audio(audioUrl);
+                currentAudio = audio; // Store reference to current audio
 
                 audio.onended = () => {
                     if (statusBadge) statusBadge.textContent = "ONLINE";
                     URL.revokeObjectURL(audioUrl); // Liberar memoria
+                    currentAudio = null; // Clear reference
                 };
 
                 audio.onerror = (e) => {
                     console.error('Error reproduciendo audio:', e);
                     if (statusBadge) statusBadge.textContent = "ONLINE";
+                    currentAudio = null; // Clear reference
                 };
 
                 await audio.play();
@@ -699,10 +753,35 @@
         const utterance = new SpeechSynthesisUtterance(cleanText);
         const voices = synthesis.getVoices();
 
-        // Buscamos voces femeninas en español
-        const preferredVoice = voices.find(v =>
-            v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Helena') || v.name.includes('Monica'))
+        // Buscamos voces femeninas en español con prioridad
+        // Primero intentamos voces específicamente femeninas
+        let preferredVoice = voices.find(v =>
+            v.lang.startsWith('es') && (
+                v.name.includes('Mónica') ||
+                v.name.includes('Monica') ||
+                v.name.includes('Paulina') ||
+                v.name.includes('Helena') ||
+                v.name.includes('Lucía') ||
+                v.name.includes('Lucia') ||
+                v.name.includes('Isabela') ||
+                v.name.includes('Dalia') ||
+                v.name.includes('Female') ||
+                v.name.includes('female') ||
+                v.name.toLowerCase().includes('woman')
+            )
         );
+
+        // Si no encontramos una voz específicamente femenina, buscamos Google español (generalmente femenina)
+        if (!preferredVoice) {
+            preferredVoice = voices.find(v =>
+                v.lang.startsWith('es') && v.name.includes('Google')
+            );
+        }
+
+        // Como último recurso, cualquier voz en español
+        if (!preferredVoice) {
+            preferredVoice = voices.find(v => v.lang.startsWith('es'));
+        }
 
         if (preferredVoice) utterance.voice = preferredVoice;
 
@@ -721,6 +800,16 @@
             if (isOpen) {
                 container.classList.remove('visible');
                 isOpen = false;
+
+                // Detener cualquier síntesis de voz en reproducción
+                if (synthesis.speaking) {
+                    synthesis.cancel();
+                }
+                // Detener audio de ElevenLabs si está reproduciéndose
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
             } else {
                 container.classList.add('visible');
                 isOpen = true;
