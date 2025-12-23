@@ -107,7 +107,7 @@ async function handleYoutubeAnalysis(request, tab) {
         chrome.tabs.sendMessage(tab.id, { action: "captureDone" }).catch(() => { });
         const base64Image = screenshotUrl.split(',')[1];
 
-        const keys = await chrome.storage.sync.get(['openaiApiKey', 'googleApiKey']);
+        const keys = await chrome.storage.sync.get(['googleApiKey']);
         let analysisText = "";
 
         const videoId = request.videoId || "unknown";
@@ -126,12 +126,11 @@ Contexto del Video:
 Analiza la imagen visual (el frame actual) teniendo EN CUENTA este contexto. Explica qué está pasando en el video en este momento, relacionando lo visual con el tema del video.`;
 
         // Check for OpenAI / Gemini
-        if (keys.openaiApiKey) {
-            analysisText = await fetchOpenAIVision(keys.openaiApiKey, base64Image, promptText);
-        } else if (keys.googleApiKey) {
+        // Check for Gemini
+        if (keys.googleApiKey) {
             analysisText = await fetchGeminiVision(keys.googleApiKey, base64Image, promptText);
         } else {
-            const fallbackText = "📸 Captura del video realizada.\n\n(Tip: Para análisis visual, configura tu API Key de OpenAI o Google Gemini en las opciones.)";
+            const fallbackText = "📸 Captura del video realizada.\n\n(Tip: Para análisis visual, configura tu API Key de Google Gemini en las opciones.)";
             await addToHistory(tab.id, "Analiza video de YouTube", fallbackText);
             return { text: fallbackText, imageData: screenshotUrl };
         }
@@ -146,10 +145,13 @@ Analiza la imagen visual (el frame actual) teniendo EN CUENTA este contexto. Exp
 
 // --- Core Logic ---
 
-async function getApiKey() {
-    const items = await chrome.storage.sync.get(['deepseekApiKey']);
+async function getApiKeyAndModel() {
+    const items = await chrome.storage.sync.get(['deepseekApiKey', 'useDeepSeekReasoner']);
     if (!items.deepseekApiKey) throw new Error("⚠️ Configura tu API Key de DeepSeek en las opciones.");
-    return items.deepseekApiKey;
+
+    // Select model based on user preference
+    const model = items.useDeepSeekReasoner ? "deepseek-reasoner" : "deepseek-chat";
+    return { apiKey: items.deepseekApiKey, model: model };
 }
 
 // Gestión de Historial por Pestaña
@@ -230,7 +232,7 @@ function trimHistory(history) {
 
 async function handleChatInteraction(request, tab) {
     try {
-        const apiKey = await getApiKey();
+        const { apiKey, model } = await getApiKeyAndModel();
         let history = await getHistory(tab.id);
 
         // Add new user message
@@ -257,7 +259,7 @@ async function handleChatInteraction(request, tab) {
 
         for (let i = 0; i < MAX_LOOPS; i++) {
             const payload = {
-                model: MODEL_NAME,
+                model: model,
                 messages: currentMessages,
                 tools: tools,
                 stream: true
@@ -445,17 +447,16 @@ async function handleScreenAnalysis(tab) {
         chrome.tabs.sendMessage(tab.id, { action: "captureDone" }).catch(() => { });
         const base64Image = screenshotUrl.split(',')[1];
 
-        const keys = await chrome.storage.sync.get(['openaiApiKey', 'googleApiKey']);
+        const keys = await chrome.storage.sync.get(['googleApiKey']);
         let analysisText = "";
 
         // Check for OpenAI / Gemini
-        if (keys.openaiApiKey) {
-            analysisText = await fetchOpenAIVision(keys.openaiApiKey, base64Image);
-        } else if (keys.googleApiKey) {
+        // Check for Gemini
+        if (keys.googleApiKey) {
             analysisText = await fetchGeminiVision(keys.googleApiKey, base64Image);
         } else {
             // Fallback
-            const fallbackText = "📸 Captura de pantalla realizada.\n\n(Tip: Para que Maria analice lo que ve, añade tu API Key de OpenAI o Google Gemini en las opciones.)";
+            const fallbackText = "📸 Captura de pantalla realizada.\n\n(Tip: Para que Maria analice lo que ve, añade tu API Key de Google Gemini en las opciones.)";
             await addToHistory(tab.id, "Analiza captura de pantalla", fallbackText);
             return { text: fallbackText, imageData: screenshotUrl };
         }
@@ -504,46 +505,23 @@ async function addToHistory(tabId, userText, assistantText) {
 }
 
 // --- Vision Providers (Unchanged generally, but ensuring they work) ---
-async function fetchOpenAIVision(apiKey, base64Image, customPrompt) {
-    const url = "https://api.openai.com/v1/chat/completions";
-    const payload = {
-        model: "gpt-4o",
-        messages: [
-            {
-                role: "user",
-                content: [
-                    { type: "text", text: customPrompt || "Analiza esta captura de pantalla en detalle y explica qué se ve, elementos de UI importantes o contenido relevante. Responde en Español." },
-                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-                ]
-            }
-        ],
-        max_tokens: 500
-    };
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error("OpenAI Error: " + (err.error?.message || response.statusText));
-    }
-    const data = await response.json();
-    return data.choices[0].message.content;
-}
+
 
 async function fetchGeminiVision(apiKey, base64Image, customPrompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`; // Efficient Flash model
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`;
     const payload = {
         contents: [{
             parts: [
                 { text: customPrompt || "Analiza esta captura de pantalla en detalle y explica qué se ve. Responde en Español." },
                 { inline_data: { mime_type: "image/jpeg", data: base64Image } }
             ]
-        }]
+        }],
+        safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ]
     };
     const response = await fetch(url, {
         method: 'POST',
@@ -566,7 +544,13 @@ async function fetchGeminiVideo(apiKey, prompt, base64Video, mimeType) {
                 { text: prompt + " Responde en Español." },
                 { inline_data: { mime_type: mimeType, data: base64Video } }
             ]
-        }]
+        }],
+        safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ]
     };
 
     const response = await fetch(url, {

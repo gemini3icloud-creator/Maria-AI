@@ -328,18 +328,24 @@
                 </div>
             </div>
 
+            <div class="input-group" style="margin-top: -15px; margin-bottom: 25px;">
+                <label
+                    style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.9rem; text-transform: none; color: white;">
+                    <input type="checkbox" id="deepseekReasoner" style="width: auto;">
+                    <span>Activar Modo Pensamiento (DeepSeek R1)</span>
+                </label>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-left: 24px; margin-top: 5px;">
+                    Habilita razonamiento profundo. Puede ser más lento pero más inteligente.
+                </div>
+            </div>
+
             <!-- Vision Providers -->
             <label
                 style="margin-top: 1.5rem; font-size: 0.9rem; color: #fff; opacity: 0.8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 15px;">
                 Visión (Opcional)
             </label>
 
-            <div class="input-group">
-                <label for="openaiKey">OpenAI Key (GPT-4o)</label>
-                <div class="input-wrapper">
-                    <input type="password" id="openaiKey" placeholder="sk-..." spellcheck="false">
-                </div>
-            </div>
+
 
             <div class="input-group">
                 <label for="googleKey">Google Gemini Key</label>
@@ -380,7 +386,7 @@
                     <span id="creditsText">--</span>
                 </div>
             </div>
-
+            <br>
             <!-- Auto-disable toggle -->
             <div class="input-group" id="autoDisableGroup" style="display: none;">
                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">

@@ -28,11 +28,12 @@ document.getElementById('refreshCredits').addEventListener('click', function () 
 
 function saveOptions() {
   const apiKey = document.getElementById('apiKey').value;
-  const openaiKey = document.getElementById('openaiKey').value;
+
   const googleKey = document.getElementById('googleKey').value;
   const elevenKey = document.getElementById('elevenKey').value;
   const elevenVoice = document.getElementById('elevenVoice').value;
   const autoDisable = document.getElementById('autoDisableElevenLabs').checked;
+  const useReasoner = document.getElementById('deepseekReasoner').checked;
 
   if (!apiKey) {
     showStatus('Por favor, ingresa una clave de DeepSeek principal.', 'error');
@@ -41,11 +42,12 @@ function saveOptions() {
 
   chrome.storage.sync.set({
     deepseekApiKey: apiKey,
-    openaiApiKey: openaiKey,
+
     googleApiKey: googleKey,
     elevenLabsKey: elevenKey,
     elevenLabsVoiceId: elevenVoice,
-    autoDisableElevenLabs: autoDisable
+    autoDisableElevenLabs: autoDisable,
+    useDeepSeekReasoner: useReasoner
   }, () => {
     showStatus('Guardado correctamente.', 'success');
 
@@ -60,15 +62,13 @@ function saveOptions() {
 
 function restoreOptions() {
   chrome.storage.sync.get([
-    'deepseekApiKey', 'openaiApiKey', 'googleApiKey',
-    'elevenLabsKey', 'elevenLabsVoiceId', 'autoDisableElevenLabs'
+    'deepseekApiKey', 'googleApiKey',
+    'elevenLabsKey', 'elevenLabsVoiceId', 'autoDisableElevenLabs', 'useDeepSeekReasoner'
   ], (items) => {
     if (items.deepseekApiKey) {
       document.getElementById('apiKey').value = items.deepseekApiKey;
     }
-    if (items.openaiApiKey) {
-      document.getElementById('openaiKey').value = items.openaiApiKey;
-    }
+
     if (items.googleApiKey) {
       document.getElementById('googleKey').value = items.googleApiKey;
     }
@@ -84,6 +84,9 @@ function restoreOptions() {
     }
     if (items.autoDisableElevenLabs !== undefined) {
       document.getElementById('autoDisableElevenLabs').checked = items.autoDisableElevenLabs;
+    }
+    if (items.useDeepSeekReasoner !== undefined) {
+      document.getElementById('deepseekReasoner').checked = items.useDeepSeekReasoner;
     }
   });
 }

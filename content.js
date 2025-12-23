@@ -87,7 +87,7 @@
 
         container.innerHTML = `
             <div class="sidebar">
-                <div class="shortcut" data-url="https://chatgpt.com/" title="ChatGPT" style="background-image: url('${chrome.runtime.getURL('assets/openai.png')}')"></div>
+
                 <div class="shortcut" data-url="https://gemini.google.com/" title="Gemini" style="background-image: url('${chrome.runtime.getURL('assets/gemini-color.png')}')"></div>
                 <div class="shortcut" data-url="https://claude.ai/" title="Claude" style="background-image: url('${chrome.runtime.getURL('assets/claude-color.png')}')"></div>
                 <div class="shortcut" data-url="https://copilot.microsoft.com/" title="Copilot" style="background-image: url('${chrome.runtime.getURL('assets/copilot-color.png')}')"></div>
@@ -775,7 +775,7 @@
                                 },
                                 body: JSON.stringify({
                                     text: cleanText,
-                                    model_id: modelId,
+                                    model_id: "eleven_turbo_v2_5",
                                     voice_settings: {
                                         stability: 0.8,         // Aumentado a 0.8 para evitar creatividad/alucinaciones
                                         similarity_boost: 0.8,  // Aumentado a 0.8 para mayor fidelidad
