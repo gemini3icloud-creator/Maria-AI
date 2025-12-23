@@ -30,6 +30,7 @@
       ],
       "js": [
         "assets/marked.min.js",
+        "assets/dompurify.min.js",
         "content.js"
       ],
       "run_at": "document_idle"
