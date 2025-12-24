@@ -19,6 +19,7 @@
     let recognition = null;
     let synthesis = window.speechSynthesis;
     let currentAudio = null; // Track current audio element (ElevenLabs)
+    let currentTTSController = null; // Track active fetch request
 
     // Iconos SVG (Minimalist / Tech)
     const ICONS = {
@@ -717,7 +718,8 @@
         cleanText = cleanText
             .replace(/[*`_#~\[\]]/g, '') // Eliminar markdown
             .replace(/\n{2,}/g, '. ') // Múltiples saltos de línea a punto
-            .replace(/\n/g, ' ') // Saltos de línea simples a espacio
+            .replace(/\n/g, '. ') // Saltos de línea simples a PUNTOS para forzar pausa
+            .replace(/\.\./g, '.') // Corregir dobles puntos
             .trim();
 
         // Asegurar que termine en punto para evitar alucinaciones del modelo TTS
@@ -766,6 +768,10 @@
 
                         // Helper: Fetch Audio
                         const fetchElevenLabs = async (modelId) => {
+                            // Initialize Controller
+                            if (currentTTSController) currentTTSController.abort();
+                            currentTTSController = new AbortController();
+
                             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${keys.elevenLabsVoiceId}`, {
                                 method: 'POST',
                                 headers: {
@@ -773,13 +779,14 @@
                                     'Content-Type': 'application/json',
                                     'xi-api-key': keys.elevenLabsKey
                                 },
+                                signal: currentTTSController.signal,
                                 body: JSON.stringify({
                                     text: cleanText,
                                     model_id: "eleven_turbo_v2_5",
                                     voice_settings: {
-                                        stability: 0.8,         // Aumentado a 0.8 para evitar creatividad/alucinaciones
-                                        similarity_boost: 0.8,  // Aumentado a 0.8 para mayor fidelidad
-                                        style: 0.0,            // 0.0 para mantenerlo neutral y reducir dramatismo extra
+                                        stability: 0.9,         // Aumentado para máxima estabilidad
+                                        similarity_boost: 0.9,  // Aumentado para máxima fidelidad
+                                        style: 0.0,            // 0.0 para mantenerlo neutral
                                         use_speaker_boost: true
                                     }
                                 })
@@ -794,6 +801,13 @@
                         // Helper: Play Blob
                         const playBlob = (blob) => {
                             console.log(`Audio Blob received: ${blob.size} bytes, type: ${blob.type}`);
+
+                            // Check if closed while fetching
+                            if (!isOpen) {
+                                console.log("Overlay closed during fetch, skipping playback.");
+                                return;
+                            }
+
                             if (blob.size < 100) {
                                 console.warn("Blob too small, likely text error response masquerading as 200 OK");
                             }
@@ -832,6 +846,11 @@
                             if (statusBadge) statusBadge.textContent = "ONLINE";
                             return; // Success
                         } catch (err1) {
+                            if (err1.name === 'AbortError') {
+                                console.log("TTS Request aborted by user.");
+                                if (statusBadge) statusBadge.textContent = "ONLINE";
+                                return;
+                            }
                             console.warn("Turbo TTS failed, retrying with Multilingual...", err1);
 
                             try {
@@ -841,6 +860,11 @@
                                 if (statusBadge) statusBadge.textContent = "ONLINE";
                                 return; // Success
                             } catch (err2) {
+                                if (err2.name === 'AbortError') {
+                                    console.log("TTS Request aborted by user.");
+                                    if (statusBadge) statusBadge.textContent = "ONLINE";
+                                    return;
+                                }
                                 console.error("All ElevenLabs attempts failed:", err2);
                                 if (statusBadge) statusBadge.textContent = "ONLINE";
                                 // Fallback to Native below
@@ -889,6 +913,20 @@
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio = null;
+                }
+
+                // Abortar fetch en progreso
+                if (currentTTSController) {
+                    currentTTSController.abort();
+                    currentTTSController = null;
+                }
+
+                // Force UI Reset
+                const statusBadge = shadowRoot?.querySelector('#status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = "ONLINE";
+                    statusBadge.style.color = "#00ff88";
+                    statusBadge.style.borderColor = "rgba(0, 255, 136, 0.3)";
                 }
             } else {
                 container.classList.add('visible');
