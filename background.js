@@ -1,11 +1,11 @@
-// Maria AI - Background Core
+// Jinx AI - Background Core
 // Usaremos fetch directo a la REST API para mantenerlo simple y sin dependencias de compilación.
 
 // Model Configuration
 // NOTE: "deepseek-chat" currently points to DeepSeek V3 (latest stable model)
 // FUTURE: Consider moving to chrome.storage.sync for user-configurable model selection
 const MODEL_NAME = "deepseek-chat";
-const SYSTEM_PROMPT = `Eres Maria, una IA avanzada integrada en el navegador.
+const SYSTEM_PROMPT = `Eres Jinx, una IA avanzada integrada en el navegador.
 Tu objetivo es ser útil, precisa y carismática.
 Responde siempre en Español con formato Markdown elegante.
 
@@ -58,7 +58,7 @@ const tools = [
 chrome.action.onClicked.addListener((tab) => {
     if (tab.url.startsWith("chrome://") || tab.url.startsWith("edge://") || tab.url.startsWith("about:")) {
         // Restricted pages cannot have scripts injected
-        console.warn("Maria AI: Cannot inject into restricted page:", tab.url);
+        console.warn("Jinx AI: Cannot inject into restricted page:", tab.url);
         return;
     }
 
@@ -456,7 +456,7 @@ async function handleScreenAnalysis(tab) {
             analysisText = await fetchGeminiVision(keys.googleApiKey, base64Image);
         } else {
             // Fallback
-            const fallbackText = "📸 Captura de pantalla realizada.\n\n(Tip: Para que Maria analice lo que ve, añade tu API Key de Google Gemini en las opciones.)";
+            const fallbackText = "📸 Captura de pantalla realizada.\n\n(Tip: Para que Jinx analice lo que ve, añade tu API Key de Google Gemini en las opciones.)";
             await addToHistory(tab.id, "Analiza captura de pantalla", fallbackText);
             return { text: fallbackText, imageData: screenshotUrl };
         }

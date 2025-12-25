@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Maria AI - Ultimate Assistant",
-  "version": "2.0.7",
+  "name": "Jinx AI - Ultimate Assistant",
+  "version": "3.0.0",
   "description": "Asistente inteligente con control de navegador, visión y memoria persistente.",
   "permissions": [
     "activeTab",
@@ -14,7 +14,7 @@
     "<all_urls>"
   ],
   "action": {
-    "default_title": "Abrir Maria AI"
+    "default_title": "Abrir Jinx AI"
   },
   "background": {
     "service_worker": "background.js"

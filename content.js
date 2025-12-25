@@ -1,17 +1,17 @@
-// Maria AI - Content Script con Shadow DOM
+// Jinx AI - Content Script con Shadow DOM
 
 (function () {
     // 1. Check for Duplicate Injection
-    if (window.hasMariaAI) {
-        console.log("Maria AI already injected.");
-        const existingHost = document.getElementById('maria-ai-host');
+    if (window.hasJinxAI) {
+        console.log("Jinx AI already injected.");
+        const existingHost = document.getElementById('Jinx-ai-host');
         // If it exists but is hidden, we might want to toggle it.
         // But since we can't easily reach the original scope's toggleUI, 
         // we assume the background script handles the toggle message which the ORIGINAL script receives.
         // So we just exit to avoid duplicate listeners and variable collisions.
         return;
     }
-    window.hasMariaAI = true;
+    window.hasJinxAI = true;
 
     let shadowRoot = null;
     let overlayContainer = null;
@@ -47,15 +47,15 @@
         return html;
     }
 
-    async function initMaria() {
-        const existingHost = document.getElementById('maria-ai-host');
+    async function initJinx() {
+        const existingHost = document.getElementById('Jinx-ai-host');
         if (existingHost) {
             existingHost.remove();
         }
 
         // 1. Crear Host y Shadow DOM
         const host = document.createElement('div');
-        host.id = 'maria-ai-host';
+        host.id = 'Jinx-ai-host';
         host.style.position = 'fixed';
         host.style.zIndex = '2147483647';
         host.style.top = '0';
@@ -67,10 +67,10 @@
 
         // 2. Cargar Estilos
         // Inyectar GLOBAL styles para drag & drop fix (iframes)
-        if (!document.getElementById('maria-global-styles')) {
+        if (!document.getElementById('Jinx-global-styles')) {
             const globalStyle = document.createElement('style');
-            globalStyle.id = 'maria-global-styles';
-            globalStyle.textContent = `body.maria-dragging iframe { pointer-events: none !important; }`;
+            globalStyle.id = 'Jinx-global-styles';
+            globalStyle.textContent = `body.Jinx-dragging iframe { pointer-events: none !important; }`;
             document.head.appendChild(globalStyle);
         }
 
@@ -81,7 +81,7 @@
 
         // 3. Estructura HTML
         const container = document.createElement('div');
-        container.id = 'maria-overlay';
+        container.id = 'Jinx-overlay';
         container.style.pointerEvents = 'auto'; // Re-enable pointer events for content
 
         const iconUrl = chrome.runtime.getURL('assets/icon.png');
@@ -90,6 +90,7 @@
             <div class="sidebar">
 
                 <div class="shortcut" data-url="https://gemini.google.com/" title="Gemini" style="background-image: url('${chrome.runtime.getURL('assets/gemini-color.png')}')"></div>
+                <div class="shortcut" data-url="https://chatgpt.com/" title="ChatGPT" style="background-image: url('${chrome.runtime.getURL('assets/openai.png')}')"></div>
                 <div class="shortcut" data-url="https://claude.ai/" title="Claude" style="background-image: url('${chrome.runtime.getURL('assets/claude-color.png')}')"></div>
                 <div class="shortcut" data-url="https://copilot.microsoft.com/" title="Copilot" style="background-image: url('${chrome.runtime.getURL('assets/copilot-color.png')}')"></div>
                 <div class="shortcut" data-url="https://chat.deepseek.com/" title="DeepSeek" style="background-image: url('${chrome.runtime.getURL('assets/deepseek-color.png')}')"></div>
@@ -98,11 +99,11 @@
             
             <div class="main-content">
                 <div class="hero-header">
-                    <div class="hero-avatar" id="maria-avatar">
-                       <img src="${iconUrl}" alt="Maria">
+                    <div class="hero-avatar" id="Jinx-avatar">
+                       <img src="${iconUrl}" alt="Jinx">
                     </div>
                     <div class="hero-info">
-                        <h2>MARIA AI</h2>
+                        <h2>Jinx AI</h2>
                         <span class="status-badge" id="status-badge">ONLINE</span>
                         <div class="credits-indicator" id="credits-indicator" style="display: none;">
                             <span class="credits-text" id="credits-text">Créditos: --</span>
@@ -115,7 +116,7 @@
 
                 <div class="chat-area" id="chat-feed">
                     <div class="message model" id="welcome-message">
-                        <div class="bubble">Hola, soy Maria. ¿En qué te ayudo hoy? ✨</div>
+                        <div class="bubble">Hola, soy Jinx. ¿En qué te ayudo hoy? ✨</div>
                     </div>
                 </div>
 
@@ -129,7 +130,7 @@
                             <input type="file" hidden id="file-input">
                         </label>
                         <input type="file" hidden id="video-input" accept="video/*">
-                         <button id="mic-btn" class="mic-btn-large" title="Hablar con Maria">${ICONS.mic}</button>
+                         <button id="mic-btn" class="mic-btn-large" title="Hablar con Jinx">${ICONS.mic}</button>
                     </div>
                     <div class="input-wrapper">
                         <textarea id="prompt-input" rows="1" placeholder="Escribe aquí..."></textarea>
@@ -445,7 +446,7 @@
     }
 
     function setLoading(isLoading) {
-        const avatar = shadowRoot?.querySelector('#maria-avatar');
+        const avatar = shadowRoot?.querySelector('#Jinx-avatar');
         const badge = shadowRoot?.querySelector('#status-badge');
 
         if (avatar) {
@@ -453,8 +454,8 @@
                 avatar.classList.add('loading');
                 if (badge) {
                     badge.textContent = "PENSANDO...";
-                    badge.style.color = "#00F2FF";
-                    badge.style.borderColor = "rgba(0, 242, 255, 0.3)";
+                    badge.style.color = "#d041ff";
+                    badge.style.borderColor = "rgba(208, 65, 255, 0.3)";
                 }
             } else {
                 avatar.classList.remove('loading');
@@ -897,9 +898,9 @@
     }
 
     function toggleUI() {
-        const container = shadowRoot?.querySelector('#maria-overlay');
+        const container = shadowRoot?.querySelector('#Jinx-overlay');
         if (!container) {
-            initMaria();
+            initJinx();
         } else {
             if (isOpen) {
                 container.classList.remove('visible');
@@ -941,7 +942,7 @@
     }
 
     function toggleMinimize() {
-        const container = shadowRoot?.querySelector('#maria-overlay');
+        const container = shadowRoot?.querySelector('#Jinx-overlay');
         if (!container) return;
 
         container.classList.toggle('minimized');
@@ -1013,7 +1014,7 @@
 
         const onMouseUp = (e) => {
             isDragging = false;
-            document.body.classList.remove('maria-dragging');
+            document.body.classList.remove('Jinx-dragging');
 
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
@@ -1042,7 +1043,7 @@
 
             onMouseDown(e);
             if (isDragging) {
-                document.body.classList.add('maria-dragging');
+                document.body.classList.add('Jinx-dragging');
             }
         });
     }
@@ -1067,7 +1068,7 @@
                 setLoading(false);
                 addMessage("⛔ <b>Conexión perdida</b><br>La extensión se ha actualizado. Por favor, recarga esta página para reconectar.", 'model', true);
             } else {
-                console.error("Maria AI Error:", error);
+                console.error("Jinx AI Error:", error);
                 if (callback) callback({ error: error.message });
             }
         }

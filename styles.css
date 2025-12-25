@@ -2,9 +2,9 @@
 :host {
   all: initial;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --primary-color: #8A2BE2;
-  --primary-dark: #4B0082;
-  --accent-color: #00F2FF;
+  --primary-color: #d041ff;
+  --primary-dark: #8a2be2;
+  --accent-color: #ff00ff;
   --bg-dark: #0F0F1A;
   --glass-bg: rgba(15, 15, 26, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
@@ -29,7 +29,7 @@
   border-radius: 3px;
 }
 
-#maria-overlay {
+#Jinx-overlay {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -38,10 +38,11 @@
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--accent-color);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 15px rgba(208, 65, 255, 0.2),
+    0 0 0 1px rgba(208, 65, 255, 0.1);
   /* Inner delicately stroke */
   border-radius: 20px;
   display: flex;
@@ -55,7 +56,7 @@
   z-index: 2147483647;
 }
 
-#maria-overlay.visible {
+#Jinx-overlay.visible {
   opacity: 1;
   transform: translateX(0) scale(1);
   pointer-events: auto;
@@ -92,7 +93,7 @@
   transform: scale(1.1);
   filter: grayscale(0%) opacity(1);
   border-color: var(--accent-color);
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+  box-shadow: 0 0 15px rgba(208, 65, 255, 0.4);
 }
 
 /* Contenido Principal */
@@ -224,7 +225,7 @@
 }
 
 .credits-refresh:hover {
-  background: rgba(0, 242, 255, 0.2);
+  background: rgba(208, 65, 255, 0.2);
   border-color: var(--accent-color);
   color: var(--accent-color);
   transform: rotate(180deg);
@@ -333,12 +334,13 @@
 }
 
 .message.user .bubble {
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.9), rgba(106, 13, 173, 0.9));
+  background: linear-gradient(135deg, rgba(208, 65, 255, 0.8), rgba(138, 43, 226, 0.9));
   color: #fff;
   border-radius: 18px;
   border-bottom-right-radius: 6px;
-  box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
-  border: 1px solid rgba(138, 43, 226, 0.5);
+  box-shadow: 0 4px 15px rgba(208, 65, 255, 0.3);
+  border: 1px solid rgba(208, 65, 255, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .message.model .bubble {
@@ -453,7 +455,7 @@
 .icon-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--accent-color);
-  border-color: rgba(0, 242, 255, 0.3);
+  border-color: rgba(208, 65, 255, 0.3);
 }
 
 .tool-btn svg,
@@ -550,16 +552,16 @@
 }
 
 /* Hide other internal elements when minimized */
-#maria-overlay.minimized .hero-info,
-#maria-overlay.minimized .window-ctrl-btn,
-#maria-overlay.minimized .chat-area,
-#maria-overlay.minimized .input-area,
-#maria-overlay.minimized .sidebar {
+#Jinx-overlay.minimized .hero-info,
+#Jinx-overlay.minimized .window-ctrl-btn,
+#Jinx-overlay.minimized .chat-area,
+#Jinx-overlay.minimized .input-area,
+#Jinx-overlay.minimized .sidebar {
   display: none !important;
 }
 
 /* Minimized State - The Floating Orb */
-#maria-overlay.minimized {
+#Jinx-overlay.minimized {
   width: 80px;
   height: 80px;
   border-radius: 50%;
@@ -571,16 +573,15 @@
   cursor: pointer;
 }
 
-#maria-overlay.minimized .hero-header {
+#Jinx-overlay.minimized .hero-header {
   height: 100%;
   width: 100%;
   border-radius: 50%;
-  /* Subtle border and glass effect */
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  background: radial-gradient(circle at 30% 30%, var(--primary-color), var(--bg-dark));
-  /* Moved gradient here */
+  /* Transparent background for floating head look */
+  border: none;
+  background: transparent;
   padding: 0;
-  box-shadow: 0 0 25px rgba(138, 43, 226, 0.5);
+  box-shadow: none;
   transition: transform 0.3s;
   z-index: 10;
   display: flex;
@@ -588,13 +589,13 @@
   justify-content: center;
 }
 
-#maria-overlay.minimized:hover .hero-header {
+#Jinx-overlay.minimized:hover .hero-header {
   transform: scale(1.1);
   border-color: var(--accent-color);
-  box-shadow: 0 0 35px rgba(0, 242, 255, 0.6);
+  box-shadow: 0 0 35px rgba(208, 65, 255, 0.6);
 }
 
-#maria-overlay.minimized .hero-avatar {
+#Jinx-overlay.minimized .hero-avatar {
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -609,12 +610,12 @@
   /* Ensure image is on top */
 }
 
-#maria-overlay.minimized .hero-avatar::after {
+#Jinx-overlay.minimized .hero-avatar::after {
   display: none;
   /* Remove loading spinner in minimized mode if it interferes */
 }
 
-#maria-overlay.minimized .hero-avatar img {
+#Jinx-overlay.minimized .hero-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -636,8 +637,8 @@
 }
 
 .speak-btn {
-  background: rgba(0, 242, 255, 0.1);
-  border: 1px solid rgba(0, 242, 255, 0.3);
+  background: rgba(208, 65, 255, 0.1);
+  border: 1px solid rgba(208, 65, 255, 0.3);
   color: var(--accent-color);
   cursor: pointer;
   padding: 6px;
@@ -652,7 +653,7 @@
   color: #fff;
   background: var(--accent-color);
   border-color: var(--accent-color);
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+  box-shadow: 0 0 10px rgba(208, 65, 255, 0.5);
   transform: scale(1.05);
 }
 
@@ -696,10 +697,10 @@
 }
 
 /* Dragging State - Prevent iframe interaction */
-body.maria-dragging * {
+body.Jinx-dragging * {
   pointer-events: none !important;
 }
 
-body.maria-dragging #maria-overlay {
+body.Jinx-dragging #Jinx-overlay {
   pointer-events: auto !important;
 }
