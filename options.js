@@ -34,6 +34,7 @@ function saveOptions() {
   const elevenVoice = document.getElementById('elevenVoice').value;
   const autoDisable = document.getElementById('autoDisableElevenLabs').checked;
   const useReasoner = document.getElementById('deepseekReasoner').checked;
+  const customModel = document.getElementById('customModel').value;
 
   if (!apiKey) {
     showStatus('Por favor, ingresa una clave de DeepSeek principal.', 'error');
@@ -42,7 +43,7 @@ function saveOptions() {
 
   chrome.storage.sync.set({
     deepseekApiKey: apiKey,
-
+    customModel: customModel,
     googleApiKey: googleKey,
     elevenLabsKey: elevenKey,
     elevenLabsVoiceId: elevenVoice,
@@ -62,11 +63,15 @@ function saveOptions() {
 
 function restoreOptions() {
   chrome.storage.sync.get([
-    'deepseekApiKey', 'googleApiKey',
+    'deepseekApiKey', 'googleApiKey', 'customModel',
     'elevenLabsKey', 'elevenLabsVoiceId', 'autoDisableElevenLabs', 'useDeepSeekReasoner'
   ], (items) => {
     if (items.deepseekApiKey) {
       document.getElementById('apiKey').value = items.deepseekApiKey;
+    }
+
+    if (items.customModel) {
+      document.getElementById('customModel').value = items.customModel;
     }
 
     if (items.googleApiKey) {
