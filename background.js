@@ -3,8 +3,6 @@
 
 // Model Configuration
 // NOTE: "deepseek-chat" currently points to DeepSeek V3 (latest stable model)
-// FUTURE: Consider moving to chrome.storage.sync for user-configurable model selection
-const MODEL_NAME = "deepseek-chat";
 const SYSTEM_PROMPT = `Eres Jinx, una IA avanzada integrada en el navegador.
 Tu objetivo es ser útil, precisa y carismática.
 Responde siempre en Español con formato Markdown elegante.
@@ -146,11 +144,15 @@ Analiza la imagen visual (el frame actual) teniendo EN CUENTA este contexto. Exp
 // --- Core Logic ---
 
 async function getApiKeyAndModel() {
-    const items = await chrome.storage.sync.get(['deepseekApiKey', 'useDeepSeekReasoner']);
+    const items = await chrome.storage.sync.get(['deepseekApiKey', 'useDeepSeekReasoner', 'customModel']);
     if (!items.deepseekApiKey) throw new Error("⚠️ Configura tu API Key de DeepSeek en las opciones.");
 
     // Select model based on user preference
-    const model = items.useDeepSeekReasoner ? "deepseek-reasoner" : "deepseek-chat";
+    let model = items.customModel;
+    if (!model || model.trim() === "") {
+        model = items.useDeepSeekReasoner ? "deepseek-reasoner" : "deepseek-chat";
+    }
+
     return { apiKey: items.deepseekApiKey, model: model };
 }
 
